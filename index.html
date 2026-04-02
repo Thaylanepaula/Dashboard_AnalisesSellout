@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sell-out — Fechamento Março · Planejamento Abril (Mães)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    :root {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --border: #2a2a2a;
+      --muted: #9ca3af;
+      --accent: #e11d48;
+    }
+    body {
+      background: var(--bg);
+      color: #e5e5e5;
+    }
+    .card-bi {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
+    }
+    .plotly-dark .modebar { opacity: 0.35; }
+    @media print {
+      .no-print { display: none !important; }
+      body {
+        background: #fff !important;
+        color: #111 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .card-bi {
+        background: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+      }
+      .print-header { color: #0f172a !important; }
+      .text-zinc-400, .text-zinc-500 { color: #475569 !important; }
+      .text-emerald-400 { color: #047857 !important; }
+      .text-rose-400 { color: #be123c !important; }
+      .bg-rose-950\/40 { background: #ffe4e6 !important; }
+      .border-rose-900\/50 { border-color: #fda4af !important; }
+      .text-rose-300 { color: #9f1239 !important; }
+      #sku-table { font-size: 9pt; }
+      #sku-table th, #sku-table td { border-color: #cbd5e1 !important; color: #0f172a !important; }
+      .card-bi .text-white { color: #0f172a !important; }
+      .card-bi .text-rose-100 { color: #881337 !important; }
+      .page-break { page-break-before: always; }
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased">
+  <div class="max-w-[1600px] mx-auto px-4 py-6 space-y-6">
+    <!-- Contexto comercial -->
+    <header class="print-header flex flex-col gap-2 border-b border-zinc-800/80 pb-4 no-print">
+      <p class="text-xs uppercase tracking-widest text-zinc-500">Dashboard comercial · Sell-out</p>
+      <h1 class="text-2xl font-semibold text-white tracking-tight">Fechamento Março · Planejamento Abril</h1>
+      <p class="text-sm text-zinc-400 max-w-3xl">
+        Campanha de <span class="text-zinc-200">Dia das Mães</span>: use o comparativo YoY para priorizar categorias, SKUs em quadrante e oportunidade de recuperação na reunião comercial.
+      </p>
+    </header>
+    <header class="print-header hidden print:block border-b border-slate-200 pb-3 mb-4">
+      <p class="text-xs uppercase tracking-widest text-slate-500">Relatório Sell-out — Impressão</p>
+      <h1 class="text-xl font-semibold text-slate-900">Fechamento Março · Planejamento Abril (Mães)</h1>
+      <p class="text-sm text-slate-600 mt-1" id="print-date"></p>
+    </header>
+
+    <!-- Uploads -->
+    <section class="no-print card-bi p-5">
+      <h2 class="text-sm font-medium text-zinc-300 mb-4">Carregar bases</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <label class="block">
+          <span class="text-xs text-zinc-500 uppercase tracking-wide">Período anterior</span>
+          <input type="file" id="file-prev" accept=".xlsx,.xls,.csv" class="mt-1 block w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-zinc-700 file:text-zinc-200 hover:file:bg-zinc-600 cursor-pointer" />
+        </label>
+        <label class="block">
+          <span class="text-xs text-zinc-500 uppercase tracking-wide">Período atual</span>
+          <input type="file" id="file-curr" accept=".xlsx,.xls,.csv" class="mt-1 block w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-zinc-700 file:text-zinc-200 hover:file:bg-zinc-600 cursor-pointer" />
+        </label>
+      </div>
+      <div class="mt-4 flex flex-wrap gap-3 items-center">
+        <button type="button" id="btn-print" class="px-4 py-2 rounded bg-zinc-100 text-zinc-900 text-sm font-medium hover:bg-white transition-colors">
+          Imprimir relatório
+        </button>
+        <span id="file-status" class="text-xs text-zinc-500"></span>
+      </div>
+    </section>
+
+    <div id="empty-state" class="card-bi p-12 text-center text-zinc-500 text-sm no-print">
+      Carregue o <strong class="text-zinc-400">período atual</strong> para visualizar KPIs, gráficos e a tabela por SKU. Inclua o <strong class="text-zinc-400">período anterior</strong> para variação YoY no faturamento.
+    </div>
+
+    <div id="dashboard" class="hidden space-y-6">
+      <!-- Linha 1: KPIs -->
+      <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="card-bi p-5">
+          <p class="text-xs uppercase tracking-wide text-zinc-500">Faturamento total</p>
+          <p class="text-2xl font-semibold text-white mt-1 tabular-nums" id="kpi-fat">—</p>
+          <p class="text-sm mt-2 tabular-nums" id="kpi-fat-yoy">—</p>
+        </div>
+        <div class="card-bi p-5">
+          <p class="text-xs uppercase tracking-wide text-zinc-500">Qtd. de pedidos</p>
+          <p class="text-2xl font-semibold text-white mt-1 tabular-nums" id="kpi-ped">—</p>
+          <p class="text-sm text-zinc-500 mt-2 tabular-nums" id="kpi-ped-sub">Período atual</p>
+        </div>
+        <div class="card-bi p-5">
+          <p class="text-xs uppercase tracking-wide text-zinc-500">Ticket médio</p>
+          <p class="text-2xl font-semibold text-white mt-1 tabular-nums" id="kpi-ticket">—</p>
+          <p class="text-sm text-zinc-500 mt-2">Faturamento ÷ pedidos</p>
+        </div>
+        <div class="card-bi p-5 border-rose-900/50 bg-rose-950/40 ring-1 ring-rose-900/30">
+          <p class="text-xs uppercase tracking-wide text-rose-300">Oportunidade de recuperação</p>
+          <p class="text-2xl font-semibold text-rose-100 mt-1 tabular-nums" id="kpi-opp">—</p>
+          <p class="text-xs text-rose-200/80 mt-2 leading-relaxed">Estimativa de venda perdida nos SKUs <span class="font-medium">Bota Fora</span> se atingissem a mediana de conversão dos <span class="font-medium">Estrelas</span>.</p>
+        </div>
+      </section>
+
+      <!-- Linha 2: Gráficos -->
+      <section class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div class="card-bi p-4 min-h-[420px]">
+          <h3 class="text-sm font-medium text-zinc-300 px-1 mb-2">Faturamento por categoria</h3>
+          <div id="chart-cat" class="w-full h-[380px]"></div>
+        </div>
+        <div class="card-bi p-4 min-h-[420px]">
+          <h3 class="text-sm font-medium text-zinc-300 px-1 mb-2">Views × taxa de conversão</h3>
+          <div id="chart-scatter" class="w-full h-[380px]"></div>
+        </div>
+      </section>
+
+      <!-- Linha 3: Tabela -->
+      <section class="card-bi p-4 overflow-hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-1 mb-3">
+          <h3 class="text-sm font-medium text-zinc-300">Detalhamento por SKU</h3>
+          <p class="text-xs text-zinc-500">QUADRANTE: Estrela (alta conversão) · Bota Fora (alta view, baixa conversão)</p>
+        </div>
+        <div class="overflow-x-auto rounded border border-zinc-800/80">
+          <table class="w-full text-sm" id="sku-table">
+            <thead class="bg-zinc-900/80 text-left text-xs uppercase tracking-wide text-zinc-500">
+              <tr>
+                <th class="px-3 py-2 font-medium">COD_DESCR</th>
+                <th class="px-3 py-2 font-medium">CATEGORIA</th>
+                <th class="px-3 py-2 font-medium">COMPRADOR</th>
+                <th class="px-3 py-2 font-medium text-right">FATURAMENTO</th>
+                <th class="px-3 py-2 font-medium text-right">PEDIDOS</th>
+                <th class="px-3 py-2 font-medium text-right">QTD</th>
+                <th class="px-3 py-2 font-medium text-right">VIEWS</th>
+                <th class="px-3 py-2 font-medium text-right">CONV.</th>
+                <th class="px-3 py-2 font-medium">QUADRANTE</th>
+              </tr>
+            </thead>
+            <tbody id="sku-tbody" class="divide-y divide-zinc-800/80 text-zinc-300"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /** Remove acentos, espaços e caracteres especiais; maiúsculas */
+      function normalizeColumnName(name) {
+        if (name == null || name === '') return '';
+        const raw = String(name).trim();
+        const noAccent = raw.normalize('NFD').replace(/\p{M}/gu, '');
+        return noAccent.replace(/\s+/g, '').replace(/[^a-zA-Z0-9_]/g, '').toUpperCase();
+      }
+
+      /** Mapeia cabeçalho normalizado -> chave canônica */
+      var ALIAS = {
+        FATURAMENTO: ['FATURAMENTO', 'FAT', 'RECEITA', 'REVENUE', 'VENDAS', 'VALOR', 'GMV', 'FATURAMENTOLIQUIDO'],
+        PEDIDOS: ['PEDIDOS', 'PEDIDO', 'ORDERS', 'ORDER', 'QTDEPEDIDOS', 'NUMPEDIDOS'],
+        QTD: ['QTD', 'QUANTIDADE', 'QTDVENDIDA', 'UNIDADES', 'UN', 'QUANTITY', 'VOLUME'],
+        VIEWS: ['VIEWS', 'VIEW', 'VISUALIZACOES', 'VISITAS', 'SESSIONS', 'IMPRESSOES', 'CLIQUES', 'PAGEVIEWS'],
+        CATEGORIA: ['CATEGORIA', 'CAT', 'CATEG', 'DEPARTAMENTO', 'SETOR', 'CATEGORY'],
+        COD_DESCR: ['COD_DESCR', 'CODDESCR', 'SKU', 'PRODUTO', 'ITEM', 'DESCRICAO', 'NOME', 'CODIGO', 'COD_PRODUTO', 'EAN'],
+        COMPRADOR: ['COMPRADOR', 'BUYER', 'RESPONSAVEL', 'GERENTE', 'CURVA']
+      };
+
+      function buildHeaderMap(headers) {
+        var normToIndex = {};
+        headers.forEach(function (h, i) {
+          var n = normalizeColumnName(h);
+          if (n) normToIndex[n] = i;
+        });
+        var map = {};
+        Object.keys(ALIAS).forEach(function (key) {
+          for (var a = 0; a < ALIAS[key].length; a++) {
+            var n = normalizeColumnName(ALIAS[key][a]);
+            if (normToIndex.hasOwnProperty(n)) {
+              map[key] = normToIndex[n];
+              break;
+            }
+          }
+        });
+        return map;
+      }
+
+      function parseNumber(v) {
+        if (v == null || v === '') return 0;
+        if (typeof v === 'number' && !isNaN(v)) return v;
+        var s = String(v).trim().replace(/\s/g, '').replace(/R\$\s?/gi, '');
+        if (s.indexOf(',') >= 0 && s.indexOf('.') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+        else if (s.indexOf(',') >= 0) s = s.replace(',', '.');
+        var n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+      }
+
+      function sheetToRows(workbook) {
+        var first = workbook.SheetNames[0];
+        var sheet = workbook.Sheets[first];
+        return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+      }
+
+      function rowsToObjects(matrix) {
+        if (!matrix || matrix.length < 2) return [];
+        var headers = matrix[0].map(function (c) { return c == null ? '' : String(c); });
+        var hmap = buildHeaderMap(headers);
+        var rows = [];
+        for (var r = 1; r < matrix.length; r++) {
+          var line = matrix[r];
+          if (!line || !line.length) continue;
+          var empty = line.every(function (c) { return c === '' || c == null; });
+          if (empty) continue;
+          var o = {};
+          Object.keys(hmap).forEach(function (k) {
+            var idx = hmap[k];
+            o[k] = line[idx];
+          });
+          rows.push(o);
+        }
+        return rows;
+      }
+
+      function readFileAsArrayBuffer(file) {
+        return new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function () { resolve(reader.result); };
+          reader.onerror = reject;
+          reader.readAsArrayBuffer(file);
+        });
+      }
+
+      function parseWorkbook(ab, name) {
+        var isCSV = /\.csv$/i.test(name || '');
+        var wb;
+        if (isCSV) {
+          var text = new TextDecoder('utf-8').decode(ab).replace(/^\uFEFF/, '');
+          wb = XLSX.read(text, { type: 'string', FS: ';' });
+          var sh0 = wb.Sheets[wb.SheetNames[0]];
+          var firstRow = sh0 ? XLSX.utils.sheet_to_json(sh0, { header: 1, defval: '' })[0] : null;
+          if (!firstRow || firstRow.length < 2)
+            wb = XLSX.read(text, { type: 'string', FS: ',' });
+        } else {
+          wb = XLSX.read(ab, { type: 'array' });
+        }
+        return rowsToObjects(sheetToRows(wb));
+      }
+
+      function aggregateTotals(rows) {
+        var fat = 0, ped = 0, qtd = 0, views = 0;
+        rows.forEach(function (r) {
+          fat += parseNumber(r.FATURAMENTO);
+          ped += parseNumber(r.PEDIDOS);
+          qtd += parseNumber(r.QTD);
+          views += parseNumber(r.VIEWS);
+        });
+        return { fat: fat, ped: ped, qtd: qtd, views: views };
+      }
+
+      function groupBySku(rows) {
+        var map = {};
+        rows.forEach(function (r) {
+          var cod = r.COD_DESCR != null && String(r.COD_DESCR).trim() !== '' ? String(r.COD_DESCR).trim() : '(sem SKU)';
+          if (!map[cod]) {
+            map[cod] = {
+              COD_DESCR: cod,
+              CATEGORIA: r.CATEGORIA != null ? String(r.CATEGORIA) : '—',
+              COMPRADOR: r.COMPRADOR != null ? String(r.COMPRADOR) : '—',
+              FATURAMENTO: 0,
+              PEDIDOS: 0,
+              QTD: 0,
+              VIEWS: 0
+            };
+          }
+          var g = map[cod];
+          g.FATURAMENTO += parseNumber(r.FATURAMENTO);
+          g.PEDIDOS += parseNumber(r.PEDIDOS);
+          g.QTD += parseNumber(r.QTD);
+          g.VIEWS += parseNumber(r.VIEWS);
+        });
+        return Object.keys(map).map(function (k) { return map[k]; });
+      }
+
+      function median(arr) {
+        if (!arr.length) return 0;
+        var s = arr.slice().sort(function (a, b) { return a - b; });
+        var m = Math.floor(s.length / 2);
+        return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+      }
+
+      function classifySkus(skus) {
+        var withViews = skus.filter(function (s) { return s.VIEWS > 0; });
+        var convs = withViews.map(function (s) { return s.PEDIDOS / s.VIEWS; });
+        var viewList = withViews.map(function (s) { return s.VIEWS; });
+        var medV = median(viewList);
+        var medC = median(convs.length ? convs : [0]);
+
+        var starConvs = skus.filter(function (s) {
+          return s.VIEWS >= 5 && s.PEDIDOS / Math.max(s.VIEWS, 1) >= medC;
+        }).map(function (s) { return s.PEDIDOS / s.VIEWS; });
+        var medianStarConv = starConvs.length ? median(starConvs) : (medC > 0 ? medC : 0);
+
+        skus.forEach(function (s) {
+          var v = s.VIEWS;
+          var c = v > 0 ? s.PEDIDOS / v : 0;
+          var highV = v >= medV;
+          var lowC = medC > 0 ? c < medC : s.PEDIDOS === 0;
+          var highC = medC > 0 ? c >= medC : s.PEDIDOS > 0 && v > 0;
+          if (highV && lowC) s.QUADRANTE = 'Bota Fora';
+          else if (highC) s.QUADRANTE = 'Estrela';
+          else s.QUADRANTE = 'Neutro';
+
+          s._conv = c;
+        });
+
+        var opp = 0;
+        var ticketGlobal = skus.reduce(function (a, s) { return a + s.FATURAMENTO; }, 0) /
+          Math.max(1, skus.reduce(function (a, s) { return a + s.PEDIDOS; }, 0));
+
+        skus.forEach(function (s) {
+          if (s.QUADRANTE !== 'Bota Fora' || s.VIEWS <= 0) return;
+          var targetPed = s.VIEWS * medianStarConv;
+          var gap = Math.max(0, targetPed - s.PEDIDOS);
+          var ticket = s.PEDIDOS > 0 ? s.FATURAMENTO / s.PEDIDOS : ticketGlobal;
+          opp += gap * ticket;
+        });
+
+        return { medV: medV, medC: medC, medianStarConv: medianStarConv, oportunidade: opp };
+      }
+
+      function fmtMoney(n) {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(n);
+      }
+
+      function fmtInt(n) {
+        return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(n);
+      }
+
+      function fmtPct(n) {
+        if (!isFinite(n)) return '—';
+        var sign = n > 0 ? '+' : '';
+        return sign + n.toFixed(1).replace('.', ',') + '%';
+      }
+
+      var state = { prev: null, curr: null, prevRows: [], currRows: [] };
+
+      function renderDashboard() {
+        var empty = document.getElementById('empty-state');
+        var dash = document.getElementById('dashboard');
+        if (!state.currRows.length) {
+          empty.classList.remove('hidden');
+          dash.classList.add('hidden');
+          return;
+        }
+        empty.classList.add('hidden');
+        dash.classList.remove('hidden');
+
+        var tPrev = state.prevRows.length ? aggregateTotals(state.prevRows) : null;
+        var tCurr = aggregateTotals(state.currRows);
+        var skus = groupBySku(state.currRows);
+        var meta = classifySkus(skus);
+
+        document.getElementById('kpi-fat').textContent = fmtMoney(tCurr.fat);
+        var yoyEl = document.getElementById('kpi-fat-yoy');
+        if (tPrev && tPrev.fat > 0) {
+          var yoy = ((tCurr.fat - tPrev.fat) / tPrev.fat) * 100;
+          yoyEl.textContent = 'Var. YoY: ' + fmtPct(yoy) + ' vs período anterior';
+          yoyEl.className = 'text-sm mt-2 tabular-nums ' + (yoy >= 0 ? 'text-emerald-400' : 'text-rose-400');
+        } else {
+          yoyEl.textContent = 'Carregue o período anterior para variação YoY';
+          yoyEl.className = 'text-sm mt-2 text-zinc-500';
+        }
+
+        document.getElementById('kpi-ped').textContent = fmtInt(tCurr.ped);
+        document.getElementById('kpi-ticket').textContent = tCurr.ped > 0 ? fmtMoney(tCurr.fat / tCurr.ped) : '—';
+        document.getElementById('kpi-opp').textContent = fmtMoney(meta.oportunidade);
+
+        var byCat = {};
+        state.currRows.forEach(function (r) {
+          var cat = r.CATEGORIA != null && String(r.CATEGORIA).trim() !== '' ? String(r.CATEGORIA).trim() : 'Sem categoria';
+          byCat[cat] = (byCat[cat] || 0) + parseNumber(r.FATURAMENTO);
+        });
+        var cats = Object.keys(byCat).sort(function (a, b) { return byCat[a] - byCat[b]; });
+        var vals = cats.map(function (c) { return byCat[c]; });
+
+        var plotlyDark = {
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          font: { color: '#a1a1aa', family: 'system-ui, sans-serif', size: 11 },
+          margin: { l: 120, r: 24, t: 16, b: 40 },
+          xaxis: { gridcolor: '#27272a', zerolinecolor: '#3f3f46' },
+          yaxis: { gridcolor: '#27272a', zerolinecolor: '#3f3f46' }
+        };
+
+        Plotly.react('chart-cat', [{
+          type: 'bar',
+          orientation: 'h',
+          y: cats,
+          x: vals,
+          marker: { color: '#3b82f6', line: { width: 0 } }
+        }], Object.assign({
+          xaxis: Object.assign({}, plotlyDark.xaxis, { title: 'Faturamento (R$)' }),
+          yaxis: Object.assign({}, plotlyDark.yaxis, { automargin: true })
+        }, plotlyDark), { responsive: true, displayModeBar: true });
+
+        var scatterX = [];
+        var scatterY = [];
+        var scatterText = [];
+        var scatterColor = [];
+        skus.forEach(function (s) {
+          if (s.VIEWS < 1) return;
+          scatterX.push(s.VIEWS);
+          scatterY.push(s._conv * 100);
+          scatterText.push(s.COD_DESCR);
+          scatterColor.push(s.QUADRANTE === 'Estrela' ? '#34d399' : s.QUADRANTE === 'Bota Fora' ? '#fb7185' : '#71717a');
+        });
+
+        Plotly.react('chart-scatter', [{
+          type: 'scatter',
+          mode: 'markers',
+          x: scatterX,
+          y: scatterY,
+          text: scatterText,
+          hovertemplate: '%{text}<br>Views: %{x:,.0f}<br>Conv.: %{y:.2f}%<extra></extra>',
+          marker: { size: 9, color: scatterColor, opacity: 0.85, line: { width: 0 } }
+        }], Object.assign({
+          xaxis: Object.assign({}, plotlyDark.xaxis, { title: 'Views', type: scatterX.length ? 'linear' : 'linear' }),
+          yaxis: Object.assign({}, plotlyDark.yaxis, { title: 'Taxa de conversão (%)', tickformat: '.2f' })
+        }, plotlyDark), { responsive: true, displayModeBar: true });
+
+        var tbody = document.getElementById('sku-tbody');
+        tbody.innerHTML = '';
+        skus.sort(function (a, b) { return b.FATURAMENTO - a.FATURAMENTO; });
+        skus.forEach(function (s) {
+          var tr = document.createElement('tr');
+          tr.className = 'hover:bg-zinc-800/40';
+          var convPct = s.VIEWS > 0 ? (s._conv * 100).toFixed(2).replace('.', ',') : '—';
+          var qClass = s.QUADRANTE === 'Estrela' ? 'text-emerald-400' : s.QUADRANTE === 'Bota Fora' ? 'text-rose-400' : 'text-zinc-500';
+          tr.innerHTML =
+            '<td class="px-3 py-2 max-w-[220px] truncate" title="' + escapeHtml(s.COD_DESCR) + '">' + escapeHtml(s.COD_DESCR) + '</td>' +
+            '<td class="px-3 py-2">' + escapeHtml(s.CATEGORIA) + '</td>' +
+            '<td class="px-3 py-2">' + escapeHtml(s.COMPRADOR) + '</td>' +
+            '<td class="px-3 py-2 text-right tabular-nums">' + fmtMoney(s.FATURAMENTO) + '</td>' +
+            '<td class="px-3 py-2 text-right tabular-nums">' + fmtInt(s.PEDIDOS) + '</td>' +
+            '<td class="px-3 py-2 text-right tabular-nums">' + fmtInt(s.QTD) + '</td>' +
+            '<td class="px-3 py-2 text-right tabular-nums">' + fmtInt(s.VIEWS) + '</td>' +
+            '<td class="px-3 py-2 text-right tabular-nums">' + convPct + '</td>' +
+            '<td class="px-3 py-2 font-medium ' + qClass + '">' + escapeHtml(s.QUADRANTE) + '</td>';
+          tbody.appendChild(tr);
+        });
+
+        document.getElementById('file-status').textContent =
+          'Atual: ' + state.currRows.length + ' linhas' + (state.prevRows.length ? ' · Anterior: ' + state.prevRows.length + ' linhas' : '');
+      }
+
+      function escapeHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      async function onFile(which, file) {
+        if (!file) return;
+        try {
+          var ab = await readFileAsArrayBuffer(file);
+          var rows = parseWorkbook(ab, file.name);
+          if (which === 'prev') state.prevRows = rows;
+          else state.currRows = rows;
+          renderDashboard();
+        } catch (e) {
+          console.error(e);
+          alert('Erro ao ler arquivo: ' + (e.message || String(e)));
+        }
+      }
+
+      document.getElementById('file-prev').addEventListener('change', function (e) {
+        onFile('prev', e.target.files[0]);
+      });
+      document.getElementById('file-curr').addEventListener('change', function (e) {
+        onFile('curr', e.target.files[0]);
+      });
+
+      var plotlyPrintLayout = {
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#f8fafc',
+        font: { color: '#334155', family: 'system-ui, sans-serif', size: 11 },
+        'xaxis.gridcolor': '#e2e8f0',
+        'xaxis.zerolinecolor': '#cbd5e1',
+        'yaxis.gridcolor': '#e2e8f0',
+        'yaxis.zerolinecolor': '#cbd5e1'
+      };
+
+      window.addEventListener('beforeprint', function () {
+        if (!state.currRows.length || typeof Plotly === 'undefined') return;
+        try {
+          Plotly.relayout('chart-cat', plotlyPrintLayout);
+          Plotly.relayout('chart-scatter', plotlyPrintLayout);
+        } catch (err) { /* gráfico ainda não renderizado */ }
+      });
+
+      window.addEventListener('afterprint', function () {
+        if (state.currRows.length) renderDashboard();
+      });
+
+      document.getElementById('btn-print').addEventListener('click', function () {
+        var pd = document.getElementById('print-date');
+        if (pd) pd.textContent = 'Gerado em ' + new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+        window.print();
+      });
+
+      window.normalizeColumnName = normalizeColumnName;
+    })();
+  </script>
+</body>
+</html>
