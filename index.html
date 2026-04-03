@@ -3,244 +3,770 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sell-out — Dashboard por abas</title>
+  <title>Sell-out Analyzer · Gerencial</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
   <style>
+    /* Tokens — light + Oliva / Vinho (alinhado ao analisador, tema claro executivo) */
     :root {
-      --wine: #cd2030;
-      --olive: #b4d94a;
-      --lime: #f2ff0c;
-      --card: #f8f9fa;
-      --border: #e9ecef;
+      --bg: #ffffff;
+      --sf: #f8f9fa;
+      --sf2: #f3f4f6;
+      --bd: rgba(0,0,0,.08);
+      --bd2: rgba(0,0,0,.12);
+      --tx: #1a1d21;
+      --tx2: #6b7280;
+      --tx3: #9ca3af;
+      --gr: #b4d94a;
+      --grbg: rgba(180, 217, 74, .2);
+      --grtx: #3d4a16;
+      --rd: #cd2030;
+      --rdbg: rgba(205, 32, 48, .1);
+      --rdtx: #cd2030;
+      --bl: #2563eb;
+      --blbg: rgba(37, 99, 235, .1);
+      --r: 10px;
+      --rs: 8px;
     }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Inter', system-ui, sans-serif;
-      background: #ffffff;
-      color: #212529;
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--tx);
+      font-size: 14px;
+      line-height: 1.55;
+      min-height: 100vh;
     }
-    .card-bi {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
+
+    /* Upload */
+    #sc-up {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px 20px;
     }
-    .tab-btn {
-      border: 1px solid var(--border);
+    .up-logo { font-size: 9.5px; font-weight: 700; letter-spacing: .15em; color: var(--tx3); text-transform: uppercase; margin-bottom: 20px; }
+    .up-title { font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 6px; }
+    .up-sub { font-size: 12.5px; color: var(--tx2); text-align: center; margin-bottom: 28px; max-width: 520px; line-height: 1.65; }
+    .up-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; width: 100%; max-width: 560px; margin-bottom: 16px; }
+    @media (max-width: 560px) { .up-grid { grid-template-columns: 1fr; } }
+    .dz {
+      background: var(--sf);
+      border: 1.5px dashed var(--bd2);
+      border-radius: var(--r);
+      padding: 22px 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      position: relative;
+    }
+    .dz:hover, .dz.drag { border-color: var(--gr); background: var(--grbg); }
+    .dz.ok { border-style: solid; border-color: var(--gr); background: var(--grbg); }
+    .dz input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .dz-ico {
+      width: 30px; height: 30px; border-radius: 50%; background: var(--sf2);
+      margin: 0 auto 8px; display: flex; align-items: center; justify-content: center;
+    }
+    .dz-ico svg { width: 14px; height: 14px; stroke: var(--tx2); fill: none; stroke-width: 1.5; }
+    .dz.ok .dz-ico { background: var(--gr); }
+    .dz.ok .dz-ico svg { stroke: #111; }
+    .dz-lbl { font-size: 12px; font-weight: 600; color: var(--tx2); margin-bottom: 2px; }
+    .dz.ok .dz-lbl { color: var(--grtx); }
+    .dz-hint { font-size: 10.5px; color: var(--tx3); }
+    .dz-fn { font-size: 10px; color: var(--grtx); font-weight: 600; margin-top: 4px; word-break: break-all; }
+
+    .cfg-box {
+      background: var(--sf);
+      border: 1px solid var(--bd);
+      border-radius: var(--r);
+      padding: 14px 18px;
+      width: 100%;
+      max-width: 560px;
+      margin-bottom: 14px;
+    }
+    .cfg-hd { font-size: 9.5px; font-weight: 700; color: var(--tx3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
+    .cfg-r { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--bd); flex-wrap: wrap; gap: 8px; }
+    .cfg-r:last-child { border-bottom: none; }
+    .cfg-rl { font-size: 12px; color: var(--tx); }
+    .cfg-rs { font-size: 10px; color: var(--tx3); }
+    .cfg-r input[type=text] {
+      border: 1px solid var(--bd2);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-family: inherit;
       background: #fff;
-      color: #495057;
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 0.5rem 0.65rem;
-      border-radius: 0.375rem;
+      color: var(--tx);
+      outline: none;
+      width: 160px;
+      max-width: 100%;
+    }
+    .cfg-r input:focus { border-color: var(--gr); }
+
+    .tip-box {
+      background: var(--blbg);
+      border: 1px solid rgba(37, 99, 235, .25);
+      border-radius: var(--rs);
+      padding: 10px 14px;
+      width: 100%;
+      max-width: 560px;
+      margin-bottom: 14px;
+      font-size: 11.5px;
+      color: #1e40af;
+      line-height: 1.65;
+    }
+
+    .btn-run {
+      background: var(--gr);
+      color: #111;
+      border: none;
+      border-radius: var(--rs);
+      padding: 11px 28px;
+      font-size: 13px;
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity .15s;
+      letter-spacing: .02em;
+    }
+    .btn-run:hover { opacity: .88; }
+    .btn-run:disabled { opacity: .35; cursor: not-allowed; }
+
+    /* Loading */
+    #sc-load {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 12px;
+    }
+    .spin {
+      width: 28px; height: 28px;
+      border: 2px solid var(--bd2);
+      border-top-color: var(--gr);
+      border-radius: 50%;
+      animation: sp .7s linear infinite;
+    }
+    @keyframes sp { to { transform: rotate(360deg); } }
+    .load-msg { font-size: 12px; color: var(--tx2); }
+
+    /* Report */
+    #sc-rpt { display: none; }
+
+    .meet-banner {
+      display: none;
+      background: #e9d5ff;
+      color: #111;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-align: center;
+      padding: 5px;
+      letter-spacing: .06em;
+    }
+    body.meeting .meet-banner { display: block; }
+    body.meeting .filter-bar { display: none !important; }
+
+    .topbar {
+      background: var(--sf);
+      border-bottom: 1px solid var(--bd);
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 300;
+      overflow-x: auto;
+      gap: 0;
+    }
+    .tb-brand {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--tx2);
+      padding: 12px 14px 12px 0;
+      margin-right: 4px;
+      border-right: 1px solid var(--bd);
       white-space: nowrap;
-      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      letter-spacing: .04em;
+      flex-shrink: 0;
     }
-    .tab-btn:hover { border-color: var(--olive); color: #212529; }
-    .tab-btn-active {
-      background: var(--olive);
-      border-color: var(--olive);
-      color: #212529;
+    .tab {
+      padding: 12px 12px;
+      font-size: 12px;
+      color: var(--tx3);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      border-bottom: 3px solid transparent;
+      transition: all .15s;
+      white-space: nowrap;
+      font-family: inherit;
+      user-select: none;
+      flex-shrink: 0;
     }
-    .tab-panel { display: none; }
-    .tab-panel-active { display: block; }
-    .badge-yoy-up {
-      background: var(--lime);
-      color: #000;
-      font-weight: 600;
-      padding: 0.125rem 0.5rem;
-      border-radius: 0.25rem;
+    .tab:hover { color: var(--tx2); }
+    .tab.on { color: var(--tx); border-bottom-color: var(--gr); font-weight: 700; }
+    .tb-right { margin-left: auto; display: flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 8px 0 8px 10px; }
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 10.5px;
+      border: 1px solid var(--bd2);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--tx2);
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .btn-sm:hover { background: var(--sf2); }
+    .btn-gr { background: var(--gr); color: #111; border-color: var(--gr); font-weight: 700; }
+
+    .filter-bar {
+      background: var(--sf2);
+      border-bottom: 1px solid var(--bd);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 45px;
+      z-index: 290;
+    }
+    .fb-label { font-size: 9.5px; font-weight: 700; color: var(--tx3); text-transform: uppercase; letter-spacing: .07em; white-space: nowrap; }
+    .fb-sep { width: 1px; height: 16px; background: var(--bd2); }
+    .fb-sel {
+      border: 1px solid var(--bd2);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-family: inherit;
+      background: #fff;
+      color: var(--tx);
+      outline: none;
+      cursor: pointer;
+      min-width: 140px;
+    }
+    .fb-sel:focus { border-color: var(--gr); }
+    .fb-clear { font-size: 10px; color: var(--tx3); cursor: pointer; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--bd); background: #fff; }
+    .fb-clear:hover { color: var(--rd); border-color: var(--rd); }
+    .fb-info { font-size: 10px; color: var(--tx3); font-style: italic; flex: 1; min-width: 120px; }
+
+    .rpt-main { padding: 20px; max-width: 1120px; margin: 0 auto; }
+    .pg { display: none; }
+    .pg.on { display: block; }
+
+    h1.pg-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .sub { font-size: 11.5px; color: var(--tx2); margin-bottom: 16px; }
+
+    .g4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .g5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+    #kpi-row .mc { border-top: 3px solid var(--gr); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    #kpi-row .mc.mc-alert { border-top-color: var(--rd); }
+    #kpi-row .mc.mc-warn  { border-top-color: #d97706; }
+    #kpi-row .mc-v.mc-pct-pos { color: var(--grtx); }
+    #kpi-row .mc-v.mc-pct-neg { color: var(--rd); }
+    @media (max-width: 1050px) { .g5 { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 900px)  { .g4, .g5 { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px)  { .g4, .g5 { grid-template-columns: 1fr; } }
+    .delta-pos { color: var(--grtx); font-weight: 700; }
+    .delta-neg { color: var(--rd);   font-weight: 700; }
+    .g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px; }
+    @media (max-width: 700px) { .g2 { grid-template-columns: 1fr; } }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--bd);
+      border-radius: var(--r);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    }
+    .mc {
+      background: var(--sf);
+      border-radius: var(--rs);
+      padding: 12px 14px;
+      border: 1px solid var(--bd);
+    }
+    .mc-l { font-size: 10px; color: var(--tx2); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .mc-v { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.2; color: var(--tx); }
+    .mc-s { font-size: 10px; color: var(--tx3); margin-top: 4px; }
+    .mc-alert { background: var(--rdbg); border-color: rgba(205,32,48,.25); }
+    .mc-alert .mc-l, .mc-alert .mc-v { color: var(--rdtx); }
+
+    .badge-yoy-up { background: var(--gr); color: #111; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+    .badge-yoy-down { color: var(--rd); font-weight: 800; }
+
+    .row-ruptura { background: rgba(205,32,48,.06) !important; }
+    .row-funil-queda { background: rgba(205,32,48,.07) !important; box-shadow: inset 3px 0 0 0 var(--rd); }
+    tr.cat-group-h td {
+      background: var(--sf2);
+      font-weight: 800;
+      font-size: 11px;
+      color: var(--tx2);
+      letter-spacing: .04em;
+      border-bottom: 2px solid var(--bd);
+      padding-top: 10px;
+    }
+
+    .chart-cell { width: 100%; height: 380px; min-height: 380px; min-width: 0; }
+    .chart-cell-sm { height: 320px; min-height: 320px; }
+
+    #pg-funil {
+      background: #ffffff;
+      padding: 20px 0 28px;
+      border-radius: 0;
+    }
+    #pg-funil .pg-title { font-size: 22px; }
+    #pg-funil .sub { font-size: 13px; }
+    .curva-a-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      background: #ffffff;
+      border: 1px solid rgba(0,0,0,.08);
+      border-radius: var(--r);
+    }
+    .curva-a-lbl { font-size: 11px; font-weight: 700; color: var(--tx2); text-transform: uppercase; letter-spacing: .06em; }
+    .curva-a-sel { min-width: 220px; max-width: 100%; }
+    .card-curva-a {
+      background: #ffffff !important;
+      border: 1px solid rgba(0,0,0,.1);
+      border-radius: var(--r);
+      overflow: hidden;
+      box-shadow: none;
+    }
+    table.tbl-curva-a {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      background: #ffffff;
+    }
+    table.tbl-curva-a thead th {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 12px 10px;
+      background: #f3f4f6;
+      border-bottom: 1px solid rgba(0,0,0,.1);
+      color: #4b5563;
+    }
+    table.tbl-curva-a tbody td {
+      padding: 12px 10px;
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      vertical-align: middle;
+      color: #1a1d21;
+    }
+    table.tbl-curva-a tbody tr.tr-curva-a td {
+      font-weight: 500;
+      border-left: none;
+    }
+    table.tbl-curva-a .td-pos {
+      font-size: 15px;
+      font-weight: 700;
+      color: #374151;
+      width: 56px;
+    }
+    table.tbl-curva-a .td-fat { font-size: 14px; font-variant-numeric: tabular-nums; }
+    table.tbl-curva-a tbody tr.tr-curva-a:hover td { background: rgba(0,0,0,.02) !important; }
+
+    .exec-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--bd);
+    }
+    .exec-row:hover { background: var(--sf); }
+    .exec-buyer { font-size: 12px; font-weight: 600; width: 140px; flex-shrink: 0; }
+    .exec-bar-wrap { flex: 1; background: var(--sf2); border-radius: 4px; height: 6px; margin: 0 10px; }
+    .exec-bar { height: 6px; border-radius: 4px; }
+
+    table.data-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+    table.data-tbl th {
+      text-align: left;
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--tx3);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 8px;
+      border-bottom: 1px solid var(--bd);
+    }
+    table.data-tbl td { padding: 8px; border-bottom: 1px solid var(--bd); }
+    table.data-tbl tr:hover td { background: var(--sf); }
+    .tr { text-align: right; }
+
+    /* ── Signal badges ─────────────────────────────────────── */
+    .sig-badge {
       display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      letter-spacing: .03em;
+      line-height: 1.4;
     }
-    .badge-yoy-down { color: var(--wine); font-weight: 600; }
-    .badge-wine { background: rgba(205, 32, 48, 0.12); color: var(--wine); font-weight: 600; font-size: 0.75rem; padding: 0.125rem 0.375rem; border-radius: 0.25rem; }
-    .row-ruptura { background-color: #fde8eb !important; }
-    @page { size: A4 portrait; margin: 10mm; }
+    .sig-hero   { background: #d1fae5; color: #065f46; }
+    .sig-up     { background: #dcfce7; color: #15803d; }
+    .sig-stable { background: #f3f4f6; color: #6b7280; }
+    .sig-watch  { background: #fef3c7; color: #92400e; }
+    .sig-risk   { background: #fee2e2; color: #991b1b; }
+    .sig-new    { background: #dbeafe; color: #1e40af; }
+
+    /* ── YoY inline coloring ────────────────────────────────── */
+    .td-yoy-pos { color: #15803d; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .td-yoy-neg { color: #cd2030; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .td-yoy-neu { color: #6b7280; font-variant-numeric: tabular-nums; }
+
+    /* ── Intelligence bar (4 cards acima da tabela) ─────────── */
+    .intel-bar {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 720px) { .intel-bar { grid-template-columns: repeat(2, 1fr); } }
+    .intel-card {
+      background: #fff;
+      border: 1px solid var(--bd);
+      border-radius: var(--rs);
+      padding: 10px 13px;
+      border-left: 3px solid var(--bd2);
+    }
+    .intel-card.ic-green { border-left-color: #15803d; }
+    .intel-card.ic-red   { border-left-color: var(--rd); }
+    .intel-card.ic-amber { border-left-color: #d97706; }
+    .intel-card.ic-blue  { border-left-color: var(--bl); }
+    .ic-val { font-size: 17px; font-weight: 800; line-height: 1.2; color: var(--tx); }
+    .ic-lbl { font-size: 9.5px; color: var(--tx2); margin-top: 2px; font-weight: 700;
+              text-transform: uppercase; letter-spacing: .04em; }
+    .ic-sub { font-size: 10px; color: var(--tx3); margin-top: 3px; line-height: 1.4; }
+
+    /* ── Script comercial ───────────────────────────────────── */
+    .script-section { margin-bottom: 18px; }
+    .script-title {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--tx3); margin-bottom: 8px;
+      padding-bottom: 4px; border-bottom: 1px solid var(--bd);
+    }
+    .script-item {
+      padding: 8px 0 8px 12px;
+      border-left: 3px solid var(--bd);
+      margin-bottom: 6px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .script-item.si-green { border-left-color: #15803d; }
+    .script-item.si-red   { border-left-color: var(--rd); }
+    .script-item.si-amber { border-left-color: #d97706; }
+    .script-item.si-blue  { border-left-color: var(--bl); }
+    .script-item.si-gray  { border-left-color: var(--tx3); }
+
+    /* ── Categorias — drill-down & enhancements ───────────────── */
+    .tr-cat-main td { cursor: pointer; }
+    .tr-cat-main:hover td { background: rgba(0,0,0,.025) !important; }
+    .cat-toggle { font-size: 10px; color: var(--tx3); display: inline-block;
+                  transition: transform .2s; line-height: 1; }
+    .cat-toggle.open { transform: rotate(90deg); }
+    .tr-cat-drill > td { padding: 0 !important; }
+    .cat-drill-inner { background: #f9fafb; padding: 6px 0 10px 36px;
+                       border-top: 1px dashed var(--bd2); }
+    .cat-drill-inner table { width: 100%; font-size: 11.5px; border-collapse: collapse; }
+    .cat-drill-inner table td { padding: 5px 8px; border-bottom: 1px solid var(--bd); }
+    .cat-drill-inner table thead th { color: var(--tx3); font-size: 9px; font-weight: 700;
+                                      text-transform: uppercase; letter-spacing: .05em;
+                                      padding: 4px 8px; }
+    .share-gain { color: #15803d; font-weight: 700; }
+    .share-loss { color: #cd2030; font-weight: 700; }
+    .share-neu  { color: #6b7280; }
+    table.data-tbl tfoot td { font-weight: 800; border-top: 2px solid var(--bd2);
+                               background: #f8f9fa; padding-top: 10px; }
+
+    .print-only { display: none; }
     @media print {
       .no-print { display: none !important; }
-      html, body { background: #fff !important; color: #212529 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .print-wrap { max-width: 100% !important; padding: 4mm !important; }
-      .tab-panel { display: block !important; page-break-inside: avoid; margin-bottom: 8mm; }
-      .tab-panel h2.print-section-title { display: block !important; font-size: 11pt; border-bottom: 2px solid var(--olive); padding-bottom: 4px; margin-bottom: 8px; color: #212529; }
-      .chart-print-h { height: 200px !important; min-height: 0 !important; }
-      .card-bi { break-inside: avoid; padding: 6px 8px !important; }
-      table { font-size: 7pt !important; }
-      th, td { padding: 2px 4px !important; }
+      #sc-up, #sc-load { display: none !important; }
+      #sc-rpt { display: block !important; }
+      .meet-banner { display: none !important; }
+      .topbar, .filter-bar { position: static !important; }
+      .print-only { display: block; }
+      .pg { display: block !important; page-break-inside: avoid; }
+      .chart-cell { height: 200px !important; min-height: 0 !important; }
     }
-    .print-section-title { display: none; }
   </style>
 </head>
-<body class="min-h-screen antialiased">
-  <div class="print-wrap max-w-[1680px] mx-auto px-4 py-5 space-y-5">
-    <header class="no-print border-b border-[#E9ECEF] pb-4">
-      <p class="text-[10px] uppercase tracking-widest text-[#6c757d] font-semibold">Dashboard comercial · Sell-out</p>
-      <h1 class="text-2xl font-semibold text-[#212529] mt-1">Fechamento Março · Planejamento Abril</h1>
-      <p class="text-sm text-[#495057] mt-2 max-w-3xl">Navegação por abas · Curva A = 80% do faturamento acumulado · Paleta Oliva / Vinho</p>
-    </header>
+<body>
+  <div class="meet-banner no-print">MODO REUNIÃO · Ctrl+M para sair</div>
 
-    <header class="hidden print:block border-b border-[#E9ECEF] pb-2 mb-3">
-      <p class="text-[9px] uppercase text-[#6c757d]">Relatório consolidado · PDF</p>
-      <h1 class="text-sm font-bold text-[#212529]">Sell-out — Todas as visões</h1>
-      <p class="text-[10px] text-[#6c757d]" id="print-date"></p>
-      <p class="text-[10px] text-[#495057] font-medium" id="print-buyer-line"></p>
-    </header>
+  <!-- UPLOAD -->
+  <div id="sc-up" class="no-print">
+    <div class="up-logo">Sell-out Analyzer · Gerencial</div>
+    <div class="up-title">Análise de Fechamento de Mês</div>
+    <p class="up-sub">
+      Colunas obrigatórias: <strong>Comprador</strong>, <strong>COD_DESCR</strong>, <strong>$ Faturamento</strong>, <strong>Pedidos</strong>, <strong>Qtd</strong>, <strong>% Tx. Conversão</strong>, <strong>Views</strong>.
+      <strong>Categoria:</strong> palavras-chave no texto do <strong>COD_DESCR</strong> (sem números iniciais), ex.: Geladeira/Refrigerador → REFRIGERADORES; senão 1ª palavra limpa.
+    </p>
 
-    <section class="no-print card-bi p-4">
-      <h2 class="text-sm font-semibold text-[#212529] mb-3">Carregar bases</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <label class="block text-xs text-[#6c757d] font-medium uppercase">Período anterior
-          <input type="file" id="file-prev" accept=".xlsx,.xls,.csv" class="mt-1 block w-full text-sm file:rounded file:border file:px-3 file:py-1.5 file:bg-white file:text-[#212529]" />
-        </label>
-        <label class="block text-xs text-[#6c757d] font-medium uppercase">Período atual
-          <input type="file" id="file-curr" accept=".xlsx,.xls,.csv" class="mt-1 block w-full text-sm file:rounded file:border file:px-3 file:py-1.5 file:bg-white file:text-[#212529]" />
-        </label>
+    <div class="up-grid">
+      <div class="dz" id="dz1">
+        <input type="file" id="file-prev" accept=".xlsx,.xls,.csv" />
+        <div class="dz-ico"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <div class="dz-lbl">Período anterior</div>
+        <div class="dz-hint">xlsx, xls, csv</div>
+        <div class="dz-fn" id="fn1"></div>
       </div>
-      <div class="mt-3 flex flex-wrap gap-2 items-center">
-        <button type="button" id="btn-clear" class="px-3 py-2 rounded border border-[#E9ECEF] text-sm font-medium text-[#495057]">Limpar dados</button>
-        <button type="button" id="btn-print" class="px-3 py-2 rounded text-sm font-semibold text-white" style="background:#212529;">Imprimir (todas as abas)</button>
-        <span id="file-status" class="text-xs text-[#6c757d]"></span>
+      <div class="dz" id="dz2">
+        <input type="file" id="file-curr" accept=".xlsx,.xls,.csv" />
+        <div class="dz-ico"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <div class="dz-lbl">Período atual</div>
+        <div class="dz-hint">obrigatório para gerar</div>
+        <div class="dz-fn" id="fn2"></div>
       </div>
-    </section>
-
-    <div id="empty-state" class="card-bi p-10 text-center text-sm text-[#6c757d] no-print">
-      Carregue o <strong class="text-[#495057]">período atual</strong> para habilitar as abas. Colunas reconhecidas automaticamente: faturamento ($), pedidos, views, categoria, SKU, comprador, marca, tipo (opcional).
     </div>
 
-    <div id="dashboard" class="hidden space-y-4">
-      <section class="no-print card-bi p-4 flex flex-wrap gap-4 items-end">
-        <label class="block min-w-[200px] flex-1 max-w-sm">
-          <span class="text-[11px] text-[#6c757d] font-semibold uppercase">Filtrar por comprador</span>
-          <select id="filter-buyer" class="mt-1 w-full border border-[#E9ECEF] rounded-md px-3 py-2 text-sm bg-white"></select>
-        </label>
-      </section>
+    <div class="tip-box no-print">
+      <strong>Faturamento:</strong> <code>cleanCurrency</code> — ponto sem vírgula = milhar (473.998 → 473998). <strong>Curva A:</strong> Pareto 80% no recorte. Configure rótulos (ex.: 2025 / 2026) para comparativos.
+    </div>
 
-      <nav class="no-print flex flex-wrap gap-2 border-b border-[#E9ECEF] pb-3" id="tab-bar" aria-label="Abas do dashboard"></nav>
+    <div class="cfg-box">
+      <div class="cfg-hd">Configuração do relatório</div>
+      <div class="cfg-r"><span class="cfg-rl">Período anterior (rótulo)</span><input type="text" id="c-p1" value="2025" maxlength="24" /></div>
+      <div class="cfg-r"><span class="cfg-rl">Período atual (rótulo)</span><input type="text" id="c-p2" value="2026" maxlength="24" /></div>
+      <div class="cfg-r"><span class="cfg-rl">Título do portfólio</span><span class="cfg-rs">Barra superior</span><input type="text" id="c-tit" value="Sell-out" maxlength="40" /></div>
+      <div class="cfg-r"><span class="cfg-rl">Campanha liquidação</span><input type="text" id="c-bf" value="Bota Fora" maxlength="30" /></div>
+      <div class="cfg-r"><span class="cfg-rl">Próxima campanha</span><input type="text" id="c-camp" value="Campanha Mães" maxlength="30" /></div>
+    </div>
 
-      <div id="panel-geral" class="tab-panel tab-panel-active space-y-4" data-tab="geral">
-        <h2 class="print-section-title">Visão Geral</h2>
-        <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div class="card-bi p-4">
-            <p class="text-[11px] uppercase font-semibold text-[#6c757d]">Faturamento · YoY</p>
-            <p class="text-xl font-bold tabular-nums mt-1" id="kpi-fat">—</p>
-            <p class="text-sm mt-2" id="kpi-fat-yoy">—</p>
-          </div>
-          <div class="card-bi p-4">
-            <p class="text-[11px] uppercase font-semibold text-[#6c757d]">Ticket médio</p>
-            <p class="text-xl font-bold tabular-nums mt-1" id="kpi-ticket">—</p>
-            <p class="text-xs text-[#6c757d] mt-2">Faturamento ÷ pedidos (atual)</p>
-          </div>
-          <div class="card-bi p-4 border-l-4" style="border-color:#cd2030;">
-            <p class="text-[11px] uppercase font-semibold" style="color:#cd2030;">Ruptura (Curva A)</p>
-            <p class="text-xl font-bold tabular-nums mt-1" style="color:#cd2030;" id="kpi-ruptura-n">—</p>
-            <p class="text-xs text-[#495057] mt-2" id="kpi-ruptura-sub">SKUs classe A com queda &gt;20% vs. período anterior</p>
-          </div>
-        </section>
+    <button type="button" class="btn-run" id="btn-run" disabled>Gerar análise completa</button>
+  </div>
+
+  <div id="sc-load" class="no-print">
+    <div class="spin"></div>
+    <div class="load-msg" id="load-msg">Lendo planilhas…</div>
+  </div>
+
+  <!-- RELATÓRIO -->
+  <div id="sc-rpt">
+    <header class="topbar no-print">
+      <div class="tb-brand" id="rpt-brand">Sell-out</div>
+      <div id="tab-buttons"></div>
+      <div class="tb-right">
+        <button type="button" class="btn-sm" id="btn-meet">Reunião</button>
+        <button type="button" class="btn-sm btn-gr" id="btn-print">Imprimir</button>
+        <button type="button" class="btn-sm" id="btn-reset">← Nova análise</button>
+      </div>
+    </header>
+
+    <div class="filter-bar no-print" id="filter-bar">
+      <span class="fb-label">Filtros</span>
+      <select class="fb-sel" id="fb-buyer"><option value="">Todos os compradores</option></select>
+      <div class="fb-sep"></div>
+      <span class="fb-label">Filtrar por categoria</span>
+      <select class="fb-sel" id="fb-cat"><option value="">Todas as categorias</option></select>
+      <span class="fb-clear" id="fb-clear" role="button">Limpar</span>
+      <span class="fb-info" id="fb-info"></span>
+    </div>
+
+    <main class="rpt-main">
+      <div class="print-only border-b border-gray-200 pb-2 mb-4">
+        <p class="text-xs text-gray-500">Relatório consolidado</p>
+        <p class="text-sm font-bold" id="print-title">Sell-out</p>
+        <p class="text-[10px] text-gray-500" id="print-date"></p>
+        <p class="text-[10px] text-gray-600" id="print-buyer-line"></p>
       </div>
 
-      <div id="panel-categorias" class="tab-panel space-y-4" data-tab="categorias">
-        <h2 class="print-section-title">Categorias</h2>
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div class="card-bi p-4 min-h-[400px]">
-            <h3 class="text-sm font-semibold text-[#212529] mb-2">Volume (Qtd) por categoria</h3>
-            <div id="chart-vol-cat" class="w-full h-[360px] chart-print-h"></div>
+      <!-- Visão geral -->
+      <div class="pg" id="pg-geral" data-panel="geral">
+        <h1 class="pg-title" id="visao-h1">Visão geral</h1>
+        <p class="sub" id="visao-sub"></p>
+        <div id="kpi-row"></div>
+        <div class="card">
+          <span class="mc-l" style="display:block;margin-bottom:8px;">Faturamento por categoria (Curva A) — <span id="geral-chart-legend"></span></span>
+          <div id="chart-geral-cat-compare" class="chart-cell"></div>
+        </div>
+        <div class="g2">
+          <div class="card">
+            <span class="mc-l" style="display:block;margin-bottom:8px;">Faturamento por categoria (Curva A)</span>
+            <div style="overflow-x:auto;">
+              <table class="data-tbl" id="table-geral-cat">
+                <thead>
+                  <tr>
+                    <th>Categoria</th>
+                    <th class="tr" id="th-geral-p1"></th>
+                    <th class="tr" id="th-geral-p2"></th>
+                    <th class="tr" id="th-geral-delta">Δ R$</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-geral-cat"></tbody>
+              </table>
+            </div>
           </div>
-          <div class="card-bi p-4 min-h-[400px]">
-            <h3 class="text-sm font-semibold text-[#212529] mb-2">Variação % YoY por categoria (faturamento)</h3>
-            <div id="chart-yoy-cat" class="w-full h-[360px] chart-print-h"></div>
+          <div class="card">
+            <span class="mc-l" style="display:block;margin-bottom:8px;">Diagnóstico rápido</span>
+            <div id="geral-insights"></div>
           </div>
         </div>
       </div>
 
-      <div id="panel-funil" class="tab-panel space-y-4" data-tab="funil">
-        <h2 class="print-section-title">Funil &amp; ABC — Curva A</h2>
-        <div class="card-bi p-4 overflow-x-auto">
-          <p class="text-xs text-[#6c757d] mb-3">Itens que compõem os primeiros <strong>80%</strong> do faturamento acumulado · Taxa de conversão = Pedidos ÷ Views</p>
-          <table class="w-full text-sm" id="table-funil">
-            <thead class="bg-[#b4d94a]/30 text-left text-[11px] uppercase text-[#212529] border-b border-[#E9ECEF]">
+      <!-- Carteira -->
+      <div class="pg" id="pg-carteira" data-panel="carteira">
+        <h1 class="pg-title">Gestão por carteira</h1>
+        <p class="sub" id="carteira-sub"></p>
+        <div class="card" id="carteira-body"></div>
+      </div>
+
+      <div class="pg" id="pg-categorias" data-panel="categorias">
+        <h1 class="pg-title">Categorias</h1>
+        <p class="sub" id="cat-panel-sub">Categorização macro no COD_DESCR (palavras-chave). Exibição apenas Curva A.</p>
+        <div class="g2">
+          <div class="card">
+            <span class="mc-l" style="display:block;margin-bottom:8px;">Comparativo por categoria (Curva A) — <span id="cat-chart-legend"></span></span>
+            <div id="chart-cat-compare" class="chart-cell"></div>
+          </div>
+          <div class="card">
+            <span class="mc-l" style="display:block;margin-bottom:8px;">Share do faturamento (Curva A)</span>
+            <div id="chart-share-pie" class="chart-cell chart-cell-sm"></div>
+          </div>
+        </div>
+        <div class="card">
+          <span class="mc-l" style="display:block;margin-bottom:8px;">Detalhe por categoria (Curva A) <span style="font-weight:400;color:var(--tx3);">— clique na linha para ver os SKUs</span></span>
+          <div style="overflow-x:auto;">
+            <table class="data-tbl" id="table-cat-detail">
+              <thead>
+                <tr>
+                  <th style="width:20px;"></th>
+                  <th>Saúde</th>
+                  <th>Categoria</th>
+                  <th class="tr" id="th-cat-p1"></th>
+                  <th class="tr" id="th-cat-p2"></th>
+                  <th class="tr">Δ R$</th>
+                  <th class="tr">Var. %</th>
+                  <th class="tr" title="Variação de participação no mix vs período anterior">Δ Share</th>
+                  <th class="tr">Qtd</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-cat-detail"></tbody>
+              <tfoot id="tfoot-cat-detail"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="pg on" id="pg-funil" data-panel="funil">
+        <h1 class="pg-title">Curva A — Pareto 80%</h1>
+        <p class="sub" id="funil-sub">Pareto 80% recalculado sobre a base selecionada (categoria ou geral). Valores em R$.</p>
+        <div class="curva-a-toolbar no-print">
+          <label class="curva-a-lbl" for="funil-cat">Filtrar por categoria</label>
+          <select id="funil-cat" class="fb-sel curva-a-sel" title="Recalcula a Curva A apenas com SKUs desta categoria">
+            <option value="">Todas as categorias (visão geral)</option>
+          </select>
+          <div style="width:1px;height:20px;background:var(--bd2);margin:0 2px;flex-shrink:0;"></div>
+          <label class="curva-a-lbl" for="funil-code-search">Buscar código</label>
+          <input type="text" id="funil-code-search" class="fb-sel" style="min-width:120px;max-width:140px;font-variant-numeric:tabular-nums;" placeholder="Ex.: 378855" autocomplete="off" inputmode="numeric" />
+          <div style="width:1px;height:20px;background:var(--bd2);margin:0 2px;flex-shrink:0;"></div>
+          <label class="curva-a-lbl" for="funil-search">Buscar nome</label>
+          <input type="text" id="funil-search" class="fb-sel" style="min-width:180px;" placeholder="Palavra-chave…" autocomplete="off" />
+          <button type="button" id="funil-search-clear" class="fb-clear" style="display:none;">✕ limpar</button>
+        </div>
+        <div id="funil-intel-bar" class="intel-bar no-print" style="display:none;"></div>
+        <div class="card card-curva-a" style="overflow-x:auto;">
+          <table class="tbl-curva-a" id="table-funil">
+            <thead>
               <tr>
-                <th class="px-3 py-2 font-semibold">SKU</th>
-                <th class="px-3 py-2 font-semibold">Categoria</th>
-                <th class="px-3 py-2 text-right font-semibold">Faturamento</th>
-                <th class="px-3 py-2 text-right font-semibold">Pedidos</th>
-                <th class="px-3 py-2 text-right font-semibold">Views</th>
-                <th class="px-3 py-2 text-right font-semibold">Conv. %</th>
+                <th>Pos.</th>
+                <th>Sinal</th>
+                <th style="white-space:nowrap;">Código</th>
+                <th>Categoria</th>
+                <th>Nome</th>
+                <th class="tr" id="th-funil-fat" style="cursor:pointer;user-select:none;white-space:nowrap;" title="Clique para ordenar">Faturamento (R$) <span id="funil-sort-icon" style="font-size:11px;opacity:.7;">↓</span></th>
+                <th class="tr" style="white-space:nowrap;">YoY %</th>
+                <th class="tr" style="white-space:nowrap;" title="Acumulado sobre a base do recorte">Acum. %</th>
+                <th class="tr" style="white-space:nowrap;">% Base</th>
+                <th class="tr" style="white-space:nowrap;">% Geral</th>
               </tr>
             </thead>
-            <tbody id="tbody-funil" class="divide-y divide-[#E9ECEF]"></tbody>
+            <tbody id="tbody-funil"></tbody>
           </table>
         </div>
       </div>
 
-      <div id="panel-diagnostico" class="tab-panel space-y-4" data-tab="diagnostico">
-        <h2 class="print-section-title">Diagnóstico — Venda perdida</h2>
-        <div class="card-bi p-4 overflow-x-auto">
-          <p class="text-xs text-[#6c757d] mb-3">Curva A com <span class="badge-wine">queda de faturamento &gt; 20%</span> vs. período anterior (mesmo SKU)</p>
-          <table class="w-full text-sm" id="table-diagnostico">
-            <thead class="bg-[#fde8eb] text-left text-[11px] uppercase border-b border-[#E9ECEF]" style="color:#cd2030;">
-              <tr>
-                <th class="px-3 py-2 font-semibold">SKU</th>
-                <th class="px-3 py-2 font-semibold">Categoria</th>
-                <th class="px-3 py-2 text-right font-semibold">Fat. atual</th>
-                <th class="px-3 py-2 text-right font-semibold">Fat. anterior</th>
-                <th class="px-3 py-2 text-right font-semibold">YoY %</th>
-              </tr>
+      <div class="pg" id="pg-diagnostico" data-panel="diagnostico">
+        <h1 class="pg-title">Diagnóstico</h1>
+        <p class="sub">Curva A com queda &gt; 20% vs. período anterior — resumo por categoria e detalhe por SKU.</p>
+        <div class="card" id="diag-cat-summary-wrap" style="overflow-x:auto;margin-bottom:12px;">
+          <span class="mc-l" style="display:block;margin-bottom:10px;">Ruptura segmentada por categoria</span>
+          <table class="data-tbl" id="table-diag-cat">
+            <thead>
+              <tr><th>Categoria</th><th class="tr">Qtd SKUs</th><th class="tr">Fat. atual (ruptura)</th><th class="tr">Pior YoY</th></tr>
             </thead>
-            <tbody id="tbody-diagnostico" class="divide-y divide-[#E9ECEF]"></tbody>
+            <tbody id="tbody-diag-cat"></tbody>
           </table>
-          <p id="diag-empty" class="text-sm text-[#6c757d] mt-3 hidden">Nenhum SKU em Curva A com ruptura neste recorte.</p>
+        </div>
+        <div class="card" style="overflow-x:auto;">
+          <table class="data-tbl" id="table-diagnostico">
+            <thead>
+              <tr><th>SKU</th><th>Categoria</th><th class="tr">Fat. atual</th><th class="tr">Fat. anterior</th><th class="tr">YoY %</th></tr>
+            </thead>
+            <tbody id="tbody-diagnostico"></tbody>
+          </table>
+          <p id="diag-empty" class="mc-l" style="margin-top:12px;">Nenhum SKU neste critério.</p>
         </div>
       </div>
 
-      <div id="panel-atributos" class="tab-panel space-y-4" data-tab="atributos">
-        <h2 class="print-section-title">Atributos</h2>
-        <div id="atributos-content" class="space-y-4"></div>
+      <div class="pg" id="pg-atributos" data-panel="atributos">
+        <h1 class="pg-title">Atributos</h1>
+        <p class="sub">Marca e tipo (colunas opcionais na planilha).</p>
+        <div id="atributos-content"></div>
       </div>
 
-      <div id="panel-campanhas" class="tab-panel space-y-4" data-tab="campanhas">
-        <h2 class="print-section-title">Campanhas</h2>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div class="card-bi p-4">
-            <h3 class="text-sm font-bold text-[#cd2030] mb-2">Bota Fora</h3>
-            <p class="text-xs text-[#6c757d] mb-3">Alta visibilidade (views acima da média) e conversão abaixo da média</p>
-            <div class="overflow-x-auto max-h-[320px] overflow-y-auto border border-[#E9ECEF] rounded">
-              <table class="w-full text-sm">
-                <thead class="bg-[#f8f9fa] text-[11px] uppercase text-[#6c757d] sticky top-0"><tr><th class="px-2 py-1.5 text-left">SKU</th><th class="px-2 py-1.5 text-right">Views</th><th class="px-2 py-1.5 text-right">Conv.%</th></tr></thead>
-                <tbody id="tbody-bota"></tbody>
-              </table>
+      <div class="pg" id="pg-campanhas" data-panel="campanhas">
+        <h1 class="pg-title">Campanhas</h1>
+        <p class="sub" id="campanhas-sub"></p>
+        <div class="g2">
+          <div class="card">
+            <h3 style="font-size:13px;color:var(--rd);margin-bottom:8px;" id="hdr-bf">Bota Fora</h3>
+            <div style="overflow:auto;max-height:300px;">
+              <table class="data-tbl"><thead><tr><th>SKU</th><th class="tr">Views</th><th class="tr">Conv.%</th></tr></thead><tbody id="tbody-bota"></tbody></table>
             </div>
           </div>
-          <div class="card-bi p-4 border-t-4" style="border-color:#b4d94a;">
-            <h3 class="text-sm font-bold text-[#212529] mb-1">Próxima campanha: Mães</h3>
-            <p class="text-xs text-[#6c757d] mb-3">Potencial Mães — views abaixo da média e conversão acima da média (priorizar na curadoria)</p>
-            <div class="overflow-x-auto max-h-[320px] overflow-y-auto border border-[#E9ECEF] rounded">
-              <table class="w-full text-sm">
-                <thead class="bg-[#b4d94a]/25 text-[11px] uppercase text-[#212529] sticky top-0"><tr><th class="px-2 py-1.5 text-left">SKU</th><th class="px-2 py-1.5 text-right">Views</th><th class="px-2 py-1.5 text-right">Conv.%</th><th class="px-2 py-1.5 text-left">Categoria</th></tr></thead>
-                <tbody id="tbody-maes"></tbody>
-              </table>
+          <div class="card" style="border-top:3px solid var(--gr);">
+            <h3 style="font-size:13px;margin-bottom:8px;" id="hdr-mae">Potencial Mães</h3>
+            <div style="overflow:auto;max-height:300px;">
+              <table class="data-tbl"><thead><tr><th>SKU</th><th class="tr">Views</th><th class="tr">Conv.%</th><th>Cat.</th></tr></thead><tbody id="tbody-maes"></tbody></table>
             </div>
           </div>
         </div>
       </div>
 
-      <div id="panel-script" class="tab-panel space-y-4" data-tab="script">
-        <h2 class="print-section-title">Script — Insights</h2>
-        <div class="card-bi p-5">
-          <p class="text-xs font-semibold uppercase text-[#6c757d] mb-3">3 principais insights (altas e baixas)</p>
-          <ol id="script-insights" class="list-decimal pl-5 space-y-3 text-sm text-[#212529] leading-relaxed"></ol>
-        </div>
+      <div class="pg" id="pg-script" data-panel="script">
+        <h1 class="pg-title">Briefing Comercial</h1>
+        <p class="sub">Inteligência gerada automaticamente para reunião com comprador ou gerente de carteira.</p>
+        <div class="card" id="script-body"></div>
       </div>
 
-      <div id="panel-plano" class="tab-panel space-y-4" data-tab="plano">
-        <h2 class="print-section-title">Plano de ação</h2>
-        <div class="card-bi p-5">
-          <p class="text-xs text-[#6c757d] mb-4">Checklist sugerido a partir dos dados carregados (marque na reunião)</p>
-          <ul id="plano-checklist" class="space-y-2 text-sm"></ul>
+      <div class="pg" id="pg-plano" data-panel="plano">
+        <h1 class="pg-title">Plano de ação</h1>
+        <p class="sub">Checklist + notas (salvas no navegador).</p>
+        <div class="card">
+          <ul id="plano-checklist" style="list-style:none;"></ul>
+        </div>
+        <div class="card">
+          <span class="mc-l" style="display:block;margin-bottom:8px;">Notas da reunião</span>
+          <textarea id="ac-notas" class="fb-sel" style="width:100%;min-height:120px;resize:vertical;font-family:inherit;" placeholder="Ações acordadas…"></textarea>
         </div>
       </div>
-    </div>
+    </main>
   </div>
 
   <script>
@@ -250,76 +776,290 @@
       var COL_WINE = '#cd2030';
       var COL_OLIVE = '#b4d94a';
       var COL_GRID = '#E9ECEF';
-      var COL_TEXT = '#212529';
-      var COL_MUTED = '#6c757d';
+      var COL_TEXT = '#111827';
+      var COL_MUTED = '#6b7280';
+      var SHARE_PALETTE = ['#b4d94a', '#2563eb', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#cd2030', '#64748b', '#84cc16', '#06b6d4'];
 
-      var TABS = [
-        { id: 'geral', label: 'Visão Geral' },
-        { id: 'categorias', label: 'Categorias' },
-        { id: 'funil', label: 'Funil & ABC' },
-        { id: 'diagnostico', label: 'Diagnóstico' },
-        { id: 'atributos', label: 'Atributos' },
-        { id: 'campanhas', label: 'Campanhas' },
-        { id: 'script', label: 'Script' },
-        { id: 'plano', label: 'Plano de Ação' }
-      ];
+      var G = { p1: '', p2: '', tit: 'Sell-out', bf: 'Bota Fora', camp: 'Campanha Mães' };
+      var state = { currRows: [], prevRows: [], metaCurr: null, metaPrev: null };
+      var lastSkus = [];
+      var lastContext = {};
+      var activePanel = 'geral';
+      var funilSearchText = '';
+      var funilCodeSearch = '';
+      var funilSortDir = 'desc';
 
       function normalizeColumnName(name) {
         if (name == null || name === '') return '';
-        var raw = String(name).trim();
-        return raw.normalize('NFD').replace(/\p{M}/gu, '').replace(/\s+/g, '').replace(/[^a-zA-Z0-9_]/g, '').toUpperCase();
+        return String(name).trim().replace(/\s+/g, ' ').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       }
-
-      var ALIAS = {
-        FATURAMENTO: ['FATURAMENTO', 'FAT', 'RECEITA', 'REVENUE', 'VENDAS', 'VALOR', 'GMV', 'FATURAMENTOLIQUIDO', 'FATURAMENTO$'],
-        PEDIDOS: ['PEDIDOS', 'PEDIDO', 'ORDERS', 'ORDER', 'QTDEPEDIDOS', 'NUMPEDIDOS'],
-        QTD: ['QTD', 'QUANTIDADE', 'QTDVENDIDA', 'UNIDADES', 'UN', 'QUANTITY', 'VOLUME'],
-        VIEWS: ['VIEWS', 'VIEW', 'VISUALIZACOES', 'VISITAS', 'SESSIONS', 'IMPRESSOES', 'CLIQUES', 'PAGEVIEWS'],
-        CATEGORIA: ['CATEGORIA', 'CAT', 'CATEG', 'DEPARTAMENTO', 'SETOR', 'CATEGORY'],
-        COD_DESCR: ['COD_DESCR', 'CODDESCR', 'SKU', 'PRODUTO', 'ITEM', 'DESCRICAO', 'NOME', 'CODIGO', 'COD_PRODUTO', 'EAN'],
-        COMPRADOR: ['COMPRADOR', 'BUYER', 'RESPONSAVEL', 'GERENTE'],
-        MARCA: ['MARCA', 'BRAND', 'FABRICANTE', 'MARCA_PRODUTO'],
-        TIPO: ['TIPO', 'TIPOPRODUTO', 'TIPO_PRODUTO', 'SEGMENTO', 'LINHA', 'TIPOITEM']
-      };
-
+      function normalizeColumnKey(name) {
+        return normalizeColumnName(name).replace(/[^A-Z0-9]/g, '');
+      }
+      var REQUIRED_COLUMNS = [
+        { key: 'COMPRADOR', label: 'Comprador' },
+        { key: 'COD_DESCR', label: 'COD_DESCR' },
+        { key: 'FATURAMENTO', label: '$ Faturamento' },
+        { key: 'PEDIDOS', label: 'Pedidos' },
+        { key: 'QTD', label: 'Qtd' },
+        { key: 'CONVERSAO', label: '% Tx. Conversão' },
+        { key: 'VIEWS', label: 'Views' }
+      ];
       function buildHeaderMap(headers) {
         var normToIndex = {};
         headers.forEach(function (h, i) {
-          var n = normalizeColumnName(h);
-          if (n) normToIndex[n] = i;
+          var n = normalizeColumnKey(h);
+          if (n && !Object.prototype.hasOwnProperty.call(normToIndex, n)) normToIndex[n] = i;
         });
         var map = {};
-        Object.keys(ALIAS).forEach(function (key) {
-          for (var a = 0; a < ALIAS[key].length; a++) {
-            var n = normalizeColumnName(ALIAS[key][a]);
-            if (Object.prototype.hasOwnProperty.call(normToIndex, n)) {
-              map[key] = normToIndex[n];
-              break;
-            }
-          }
+        REQUIRED_COLUMNS.forEach(function (col) {
+          var expected = normalizeColumnKey(col.label);
+          if (Object.prototype.hasOwnProperty.call(normToIndex, expected)) map[col.key] = normToIndex[expected];
         });
         return map;
       }
 
-      function parseNumber(v) {
-        if (v == null || v === '') return 0;
-        if (typeof v === 'number' && !isNaN(v)) return v;
-        var s = String(v).trim().replace(/\s/g, '').replace(/R\$\s?/gi, '');
-        if (s.indexOf(',') >= 0 && s.indexOf('.') >= 0) s = s.replace(/\./g, '').replace(',', '.');
-        else if (s.indexOf(',') >= 0) s = s.replace(',', '.');
-        var n = parseFloat(s);
-        return isNaN(n) ? 0 : n;
+      function normalizeWordKey(w) {
+        if (w == null || w === '') return '';
+        return String(w).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z0-9]/g, '');
       }
 
+      function firstSignificantWordFromCod(cod) {
+        if (cod == null || String(cod).trim() === '') return '';
+        var t = String(cod).trim();
+        t = t.replace(/^\d+/, '');
+        t = t.replace(/^[\s\-–—.:,;+]+/, '');
+        while (t.length && /^\d/.test(t)) {
+          t = t.replace(/^\d+/, '');
+          t = t.replace(/^[\s\-–—.:,;+]+/, '');
+        }
+        t = t.trim();
+        if (!t) return '';
+        var words = t.split(/\s+/);
+        var i, w;
+        for (i = 0; i < words.length; i++) {
+          w = words[i];
+          if (!w) continue;
+          w = w.replace(/[,;.:]+$/, '');
+          if (/[A-Za-zÀ-ÿ\u00C0-\u024F]/.test(w)) return w;
+        }
+        return '';
+      }
+
+      /** Texto do COD_DESCR sem bloco numérico inicial (para busca de palavras-chave). */
+      function codTextWithoutLeadingNumbers(cod) {
+        if (cod == null || String(cod).trim() === '') return '';
+        var t = String(cod).trim();
+        t = t.replace(/^\d+/, '');
+        t = t.replace(/^[\s\-–—.:,;+]+/, '');
+        while (t.length && /^\d/.test(t)) {
+          t = t.replace(/^\d+/, '');
+          t = t.replace(/^[\s\-–—.:,;+]+/, '');
+        }
+        return t.trim();
+      }
+
+      function normalizeMacroSearchText(s) {
+        return String(s).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      }
+
+      /**
+       * Categorização macro: palavras-chave no COD_DESCR (após ignorar números iniciais).
+       * Senão: primeira palavra “limpa”.
+       */
+      function deriveMacroCategoryFromCod(cod) {
+        var raw = codTextWithoutLeadingNumbers(cod);
+        var text = normalizeMacroSearchText(raw);
+        if (!text) return 'OUTROS';
+        if (text.indexOf('GELADEIRA') >= 0 || text.indexOf('REFRIGERADOR') >= 0 || text.indexOf('FREEZER') >= 0) return 'REFRIGERADORES';
+        if (text.indexOf('LAVA') >= 0 || text.indexOf('MAQUINA') >= 0 || text.indexOf('LAVADORA') >= 0 || text.indexOf('SECADORA') >= 0) return 'LAVANDORAS';
+        var tokens = text.split(/[^A-Z0-9]+/).filter(Boolean);
+        if (tokens.indexOf('AR') >= 0 || text.indexOf('CONDICIONADO') >= 0 || text.indexOf('VENTILADOR') >= 0) return 'CLIMATIZAÇÃO';
+        if (text.indexOf('FOGAO') >= 0 || text.indexOf('COOKTOP') >= 0 || text.indexOf('FORNO') >= 0 || text.indexOf('MICROONDAS') >= 0) return 'FOGÃO';
+        var first = firstSignificantWordFromCod(cod);
+        if (!first) return 'OUTROS';
+        var key = normalizeWordKey(first);
+        return key || 'OUTROS';
+      }
+
+      /**
+       * Sinal comercial por SKU (requer _yoySkuPct e _prevFat já anexados via attachSkuYoY).
+       * Herói ≥+20% | Crescendo ≥+5% | Estável ≥-10% | Atenção ≥-20% | Ruptura <-20% | Novo = sem prev
+       */
+      function getSkuSignal(s) {
+        var hasPrev = s._prevFat != null && s._prevFat > 0;
+        if (!hasPrev || s._yoySkuPct == null) return { cls: 'sig-new',    label: 'Novo'      };
+        var y = s._yoySkuPct;
+        if (y >= 20)  return { cls: 'sig-hero',   label: 'Herói'     };
+        if (y >= 5)   return { cls: 'sig-up',     label: 'Crescendo' };
+        if (y >= -10) return { cls: 'sig-stable', label: 'Estável'   };
+        if (y >= -20) return { cls: 'sig-watch',  label: 'Atenção'   };
+        return { cls: 'sig-risk', label: 'Ruptura' };
+      }
+
+      /**
+       * Saúde de uma categoria: derivada do perfil YoY dos SKUs e concentração.
+       * Concentrada → 1 SKU ≥ 60% da fat. | Em risco → maioria com YoY < -20%
+       * Crescendo → maioria com YoY ≥ +5% | Estável → demais casos
+       */
+      function getCatHealth(skusInCat, hasPrev) {
+        if (!skusInCat.length) return { cls: 'sig-stable', label: 'Estável' };
+        if (!hasPrev) return { cls: 'sig-new', label: 'Nova' };
+        var withYoy = skusInCat.filter(function (s) { return s._yoySkuPct != null; });
+        if (!withYoy.length) return { cls: 'sig-new', label: 'Nova' };
+        var total = skusInCat.reduce(function (a, s) { return a + s.FATURAMENTO; }, 0);
+        var top1 = skusInCat.slice().sort(sortSkuByFatDesc)[0].FATURAMENTO;
+        if (total > 0 && top1 / total >= 0.6) return { cls: 'sig-watch', label: 'Concentrada' };
+        var nRisk = withYoy.filter(function (s) { return s._yoySkuPct < -20; }).length;
+        var nUp   = withYoy.filter(function (s) { return s._yoySkuPct >= 5; }).length;
+        if (nRisk >= Math.ceil(withYoy.length * 0.5)) return { cls: 'sig-risk',   label: 'Em risco'  };
+        if (nUp   >= Math.ceil(withYoy.length * 0.5)) return { cls: 'sig-up',     label: 'Crescendo' };
+        return { cls: 'sig-stable', label: 'Estável' };
+      }
+
+      /** Extrai a parte numérica inicial de um COD_DESCR: "378855 - Geladeira…" → "378855" */
+      function extractSkuCode(cod) {
+        if (!cod) return '';
+        var m = String(cod).match(/^(\d+)\s*[-–—]\s*/);
+        return m ? m[1] : '';
+      }
+      /** Retorna apenas a descrição textual, sem o código e o hífen: "378855 - Geladeira…" → "Geladeira…" */
+      function extractSkuName(cod) {
+        if (!cod) return String(cod || '');
+        var m = String(cod).match(/^\d+\s*[-–—]\s*([\s\S]*)$/);
+        return m ? m[1].trim() : String(cod).trim();
+      }
+
+      function sortSkuByFatDesc(a, b) {
+        var d = b.FATURAMENTO - a.FATURAMENTO;
+        if (d !== 0) return d;
+        return String(a.COD_DESCR || '').localeCompare(String(b.COD_DESCR || ''), 'pt-BR');
+      }
+
+      var OPTIONAL_DIM_SYNONYMS = {
+        MARCA: ['MARCA', 'BRAND', 'FABRICANTE', 'FORNECEDOR'],
+        TIPO: ['TIPO', 'TIPOITEM', 'SUBCATEGORIA', 'FORMATO', 'MODALIDADE']
+      };
+
+      function mapOptionalDims(headers, usedIndices) {
+        var norm = headers.map(function (h) { return normalizeColumnKey(h); });
+        var out = { MARCA: -1, TIPO: -1 };
+        var used = {};
+        usedIndices.forEach(function (ix) { used[ix] = true; });
+        function pick(key) {
+          var syns = OPTIONAL_DIM_SYNONYMS[key];
+          for (var i = 0; i < norm.length; i++) {
+            if (used[i]) continue;
+            for (var j = 0; j < syns.length; j++) {
+              if (norm[i] === syns[j]) {
+                out[key] = i;
+                used[i] = true;
+                return;
+              }
+            }
+          }
+        }
+        pick('MARCA');
+        pick('TIPO');
+        return out;
+      }
+
+      /**
+       * Faturamento: ponto sem vírgula = milhar (473.998 → 473998). Com vírgula = decimal BR.
+       * Sempre passar por aqui — inclusive números do Excel (String(473.998) vira milhar).
+       */
+      function cleanCurrency(val) {
+        if (!val) return 0;
+        var str = String(val).replace(/[R$\s]/g, '');
+        if (str.includes('.') && str.includes(',')) {
+          str = str.replace(/\./g, '').replace(',', '.');
+        } else if (str.includes('.') && !str.includes(',')) {
+          str = str.replace(/\./g, '');
+        } else if (str.includes(',')) {
+          str = str.replace(',', '.');
+        }
+        return parseFloat(str) || 0;
+      }
+
+      /** Pedidos, Qtd, Views (mantém compatibilidade com vírgula decimal e milhares). */
+      function parseBrazilianNumeric(v) {
+        if (v == null || v === '') return 0;
+        if (typeof v === 'number' && !isNaN(v)) return v;
+        var s = String(v).trim();
+        if (!s) return 0;
+        var neg = /^[\s\u00A0]*[-−–]/.test(s);
+        s = s.replace(/R\$/gi, '').replace(/\u20AC/gi, '').replace(/\$/g, '').replace(/%/g, '');
+        s = s.replace(/\u00A0/g, ' ').replace(/\s/g, '');
+        s = s.replace(/[^\d.,\-]/g, '');
+        if (s === '' || s === '-' || s === '.') return 0;
+        if (/^-/.test(s)) {
+          neg = true;
+          s = s.replace(/^-/, '');
+        }
+        s = s.replace(/[^\d.,]/g, '');
+        if (s === '') return 0;
+        var hasComma = s.indexOf(',') >= 0;
+        var hasDot = s.indexOf('.') >= 0;
+        if (hasComma && hasDot) s = s.replace(/\./g, '').replace(',', '.');
+        else if (hasComma) s = s.replace(',', '.');
+        else if (hasDot) {
+          var parts = s.split('.');
+          var last = parts[parts.length - 1];
+          if (parts.length === 2 && last.length <= 2) s = parts[0] + '.' + last;
+          else s = parts.join('');
+        }
+        var n = parseFloat(s);
+        if (isNaN(n)) return 0;
+        return neg ? -n : n;
+      }
+
+      function parseNumber(v) {
+        return parseBrazilianNumeric(v);
+      }
+
+      /**
+       * 1) Faturamento com cleanCurrency (milhar vs decimal).
+       * 2) Demais métricas com parseBrazilianNumeric.
+       */
+      function normalizeRow(o) {
+        if (!o) return o;
+        o.FATURAMENTO = cleanCurrency(o.FATURAMENTO);
+        o.PEDIDOS = parseBrazilianNumeric(o.PEDIDOS);
+        o.QTD = parseBrazilianNumeric(o.QTD);
+        o.VIEWS = parseBrazilianNumeric(o.VIEWS);
+        return o;
+      }
+      function parsePercent(v) {
+        if (v == null || v === '') return null;
+        if (typeof v === 'number' && !isNaN(v)) {
+          if (v < 0) return null;
+          if (v <= 1) return v;
+          return v / 100;
+        }
+        var raw = String(v).trim();
+        var hasPct = /%/.test(raw);
+        var n = parseNumber(raw);
+        if (!isFinite(n)) return null;
+        if (hasPct) return n / 100;
+        if (n > 1) return n / 100;
+        return n;
+      }
       function sheetToRows(workbook) {
         var first = workbook.SheetNames[0];
         return XLSX.utils.sheet_to_json(workbook.Sheets[first], { header: 1, defval: '', raw: false });
       }
-
       function rowsToObjects(matrix) {
-        if (!matrix || matrix.length < 2) return [];
+        if (!matrix || matrix.length < 2) return { rows: [], meta: { categorySource: '', categoryColumnLabel: '' } };
         var headers = matrix[0].map(function (c) { return c == null ? '' : String(c); });
         var hmap = buildHeaderMap(headers);
+        var missing = REQUIRED_COLUMNS.filter(function (col) { return !Object.prototype.hasOwnProperty.call(hmap, col.key); });
+        if (missing.length) {
+          throw new Error('Colunas obrigatorias: ' + missing.map(function (c) { return c.label; }).join(', '));
+        }
+        var usedIdx = Object.keys(hmap).map(function (k) { return hmap[k]; });
+        var optDim = mapOptionalDims(headers, usedIdx);
+        var meta = { categorySource: 'derived', categoryColumnLabel: '' };
+
         var rows = [];
         for (var r = 1; r < matrix.length; r++) {
           var line = matrix[r];
@@ -327,20 +1067,22 @@
           if (line.every(function (c) { return c === '' || c == null; })) continue;
           var o = {};
           Object.keys(hmap).forEach(function (k) { o[k] = line[hmap[k]]; });
+          normalizeRow(o);
+          o.CATEGORIA = deriveMacroCategoryFromCod(o.COD_DESCR);
+          if (optDim.MARCA >= 0) o.MARCA = line[optDim.MARCA];
+          if (optDim.TIPO >= 0) o.TIPO = line[optDim.TIPO];
           rows.push(o);
         }
-        return rows;
+        return { rows: rows, meta: meta };
       }
-
       function readFileAsArrayBuffer(file) {
         return new Promise(function (resolve, reject) {
-          var r = new FileReader();
-          r.onload = function () { resolve(r.result); };
-          r.onerror = reject;
-          r.readAsArrayBuffer(file);
+          var fr = new FileReader();
+          fr.onload = function () { resolve(fr.result); };
+          fr.onerror = reject;
+          fr.readAsArrayBuffer(file);
         });
       }
-
       function parseWorkbook(ab, name) {
         var isCSV = /\.csv$/i.test(name || '');
         var wb;
@@ -354,49 +1096,43 @@
         return rowsToObjects(sheetToRows(wb));
       }
 
-      function aggregateTotals(rows) {
-        var fat = 0, ped = 0;
-        rows.forEach(function (r) {
-          fat += parseNumber(r.FATURAMENTO);
-          ped += parseNumber(r.PEDIDOS);
-        });
-        return { fat: fat, ped: ped };
+      function rowFat(r) {
+        return cleanCurrency(r.FATURAMENTO);
       }
 
+      function aggregateTotals(rows) {
+        var fat = 0, ped = 0;
+        rows.forEach(function (r) { fat += rowFat(r); ped += parseNumber(r.PEDIDOS); });
+        return { fat: fat, ped: ped };
+      }
       function fatByCategory(rows) {
         var by = {};
         rows.forEach(function (r) {
-          var cat = r.CATEGORIA != null && String(r.CATEGORIA).trim() !== '' ? String(r.CATEGORIA).trim() : 'Sem categoria';
-          by[cat] = (by[cat] || 0) + parseNumber(r.FATURAMENTO);
+          var cat = r.CATEGORIA != null && String(r.CATEGORIA).trim() !== '' ? String(r.CATEGORIA).trim() : 'OUTROS';
+          by[cat] = (by[cat] || 0) + rowFat(r);
         });
         return by;
       }
-
       function qtdByCategory(rows) {
         var by = {};
         rows.forEach(function (r) {
-          var cat = r.CATEGORIA != null && String(r.CATEGORIA).trim() !== '' ? String(r.CATEGORIA).trim() : 'Sem categoria';
+          var cat = r.CATEGORIA != null && String(r.CATEGORIA).trim() !== '' ? String(r.CATEGORIA).trim() : 'OUTROS';
           by[cat] = (by[cat] || 0) + parseNumber(r.QTD);
         });
         return by;
       }
-
       function aggByField(rows, field, labelEmpty) {
         var by = {};
         rows.forEach(function (r) {
           var raw = r[field];
           var k = raw != null && String(raw).trim() !== '' ? String(raw).trim() : (labelEmpty || 'Sem ' + field);
-          by[k] = (by[k] || 0) + parseNumber(r.FATURAMENTO);
+          by[k] = (by[k] || 0) + rowFat(r);
         });
         return by;
       }
-
       function hasDim(rows, field) {
-        return rows.some(function (r) {
-          return r[field] != null && String(r[field]).trim() !== '';
-        });
+        return rows.some(function (r) { return r[field] != null && String(r[field]).trim() !== ''; });
       }
-
       function uniqueBuyers(rows) {
         var set = {};
         rows.forEach(function (r) {
@@ -405,33 +1141,40 @@
         });
         return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); });
       }
-
       function filterByBuyer(rows, buyer) {
         if (!buyer) return rows;
+        return rows.filter(function (r) { return (r.COMPRADOR != null ? String(r.COMPRADOR).trim() : '') === buyer; });
+      }
+      function filterByCat(rows, cat) {
+        if (!cat) return rows;
         return rows.filter(function (r) {
-          return (r.COMPRADOR != null ? String(r.COMPRADOR).trim() : '') === buyer;
+          var c = r.CATEGORIA != null && String(r.CATEGORIA).trim() !== '' ? String(r.CATEGORIA).trim() : 'OUTROS';
+          return c === cat;
         });
+      }
+
+      /** Linhas cujo SKU está no conjunto Curva A (mesmos COD_DESCR do recorte atual). */
+      function filterRowsByCurvaSkuSet(rows, skuSet) {
+        return rows.filter(function (r) {
+          var cod = r.COD_DESCR != null && String(r.COD_DESCR).trim() !== '' ? String(r.COD_DESCR).trim() : '(sem SKU)';
+          return skuSet[cod] === true;
+        });
+      }
+
+      function buildCurvaSkuSet(skusCurvaA) {
+        var o = {};
+        skusCurvaA.forEach(function (s) { o[s.COD_DESCR] = true; });
+        return o;
       }
 
       function getWorkingData() {
-        var b = document.getElementById('filter-buyer').value || '';
-        return { curr: filterByBuyer(state.currRows, b), prev: filterByBuyer(state.prevRows, b) };
+        var b = document.getElementById('fb-buyer').value || '';
+        var c = document.getElementById('fb-cat').value || '';
+        return {
+          curr: filterByCat(filterByBuyer(state.currRows, b), c),
+          prev: filterByCat(filterByBuyer(state.prevRows, b), c)
+        };
       }
-
-      function rebuildBuyerSelect() {
-        var sel = document.getElementById('filter-buyer');
-        var keep = sel.value;
-        var buyers = uniqueBuyers(state.currRows.concat(state.prevRows));
-        sel.innerHTML = '<option value="">Todos os compradores</option>';
-        buyers.forEach(function (n) {
-          var o = document.createElement('option');
-          o.value = n;
-          o.textContent = n;
-          sel.appendChild(o);
-        });
-        if (keep && buyers.indexOf(keep) >= 0) sel.value = keep;
-      }
-
       function groupBySku(rows) {
         var map = {};
         rows.forEach(function (r) {
@@ -439,50 +1182,95 @@
           if (!map[cod]) {
             map[cod] = {
               COD_DESCR: cod,
-              CATEGORIA: r.CATEGORIA != null ? String(r.CATEGORIA) : '—',
+              CATEGORIA: 'OUTROS',
               COMPRADOR: r.COMPRADOR != null ? String(r.COMPRADOR) : '—',
               MARCA: r.MARCA != null ? String(r.MARCA) : '',
               TIPO: r.TIPO != null ? String(r.TIPO) : '',
-              FATURAMENTO: 0,
-              PEDIDOS: 0,
-              QTD: 0,
-              VIEWS: 0
+              FATURAMENTO: 0, PEDIDOS: 0, QTD: 0, VIEWS: 0, CONVERSAO: null
             };
           }
           var g = map[cod];
-          g.FATURAMENTO += parseNumber(r.FATURAMENTO);
+          g.FATURAMENTO += rowFat(r);
           g.PEDIDOS += parseNumber(r.PEDIDOS);
           g.QTD += parseNumber(r.QTD);
           g.VIEWS += parseNumber(r.VIEWS);
+          if (g.CONVERSAO == null && r.CONVERSAO != null && String(r.CONVERSAO).trim() !== '') g.CONVERSAO = r.CONVERSAO;
           if (!g.MARCA && r.MARCA) g.MARCA = String(r.MARCA);
           if (!g.TIPO && r.TIPO) g.TIPO = String(r.TIPO);
         });
-        return Object.keys(map).map(function (k) { return map[k]; });
+        return Object.keys(map).map(function (k) {
+          var g = map[k];
+          g.CATEGORIA = deriveMacroCategoryFromCod(g.COD_DESCR);
+          return g;
+        });
       }
-
       function mean(arr) {
         if (!arr.length) return 0;
         var s = 0;
         for (var i = 0; i < arr.length; i++) s += arr[i];
         return s / arr.length;
       }
-
-      /** Curva A = primeiros 80% do faturamento acumulado (Pareto). Demais: B até 95%, C resto. */
-      function assignABC(skusDesc) {
-        var total = skusDesc.reduce(function (a, s) { return a + s.FATURAMENTO; }, 0);
-        var cum = 0;
+      /**
+       * ABC: ordenar SKU por fat. desc → acumulado &lt; 80% do total = A.
+       * totalBrutoLinhas = soma real das linhas (opcional); se omitido, usa soma dos SKUs agrupados.
+       */
+      function calculateABC(skusSortedByFatDesc, totalBrutoLinhas) {
+        var total;
+        if (totalBrutoLinhas != null && isFinite(Number(totalBrutoLinhas)) && Number(totalBrutoLinhas) > 0) {
+          total = Number(totalBrutoLinhas);
+        } else {
+          total = 0;
+          var j;
+          for (j = 0; j < skusSortedByFatDesc.length; j++) total += skusSortedByFatDesc[j].FATURAMENTO;
+        }
         if (total <= 0) {
-          skusDesc.forEach(function (s) { s.CURVA = 'C'; });
+          for (var i = 0; i < skusSortedByFatDesc.length; i++) skusSortedByFatDesc[i].CURVA = 'C';
           return;
         }
-        skusDesc.forEach(function (s) {
-          if (cum < total * 0.8) s.CURVA = 'A';
-          else if (cum < total * 0.95) s.CURVA = 'B';
-          else s.CURVA = 'C';
-          cum += s.FATURAMENTO;
-        });
+        var limA = total * 0.8;
+        var limB = total * 0.95;
+        var cum = 0;
+        for (var i = 0; i < skusSortedByFatDesc.length; i++) {
+          var sku = skusSortedByFatDesc[i];
+          var f = sku.FATURAMENTO;
+          if (cum < limA) sku.CURVA = 'A';
+          else if (cum < limB) sku.CURVA = 'B';
+          else sku.CURVA = 'C';
+          cum += f;
+        }
       }
 
+      /**
+       * Soma bruta de TODAS as linhas do arquivo atual (sem Curva A, sem filtros de tela).
+       */
+      function sumFaturamentoBrutoLinhas(rows) {
+        var t = 0;
+        (rows || []).forEach(function (r) { t += rowFat(r); });
+        return t;
+      }
+
+      /**
+       * Total bruto (soma de linhas) + Curva A (80% desse total, SKUs maior→menor) no arquivo inteiro do período atual.
+       */
+      function computeBrutoParetoCurvaA(currRows) {
+        var totalFaturamentoBruto = sumFaturamentoBrutoLinhas(currRows);
+        var skus = groupBySku(currRows);
+        skus.sort(sortSkuByFatDesc);
+        calculateABC(skus, totalFaturamentoBruto);
+        var fatCurvaA = 0;
+        var i;
+        for (i = 0; i < skus.length; i++) {
+          if (skus[i].CURVA === 'A') fatCurvaA += skus[i].FATURAMENTO;
+        }
+        var curvaMap = {};
+        skus.forEach(function (s) { curvaMap[s.COD_DESCR] = s.CURVA; });
+        return {
+          totalFaturamentoBruto: totalFaturamentoBruto,
+          fatCurvaA: fatCurvaA,
+          curvaMap: curvaMap,
+          skusGlobal: skus
+        };
+      }
       function attachSkuYoY(skus, prevRows) {
         var prevMap = {};
         groupBySku(prevRows).forEach(function (s) { prevMap[s.COD_DESCR] = s.FATURAMENTO; });
@@ -493,28 +1281,32 @@
           s._ruptura = s.CURVA === 'A' && p > 0 && s._yoySkuPct < -20;
         });
       }
-
       function enrichSkus(skus) {
         var convs = [];
         skus.forEach(function (s) {
-          s._conv = s.VIEWS > 0 ? s.PEDIDOS / s.VIEWS : 0;
+          var convSheet = parsePercent(s.CONVERSAO);
+          s._conv = convSheet != null ? convSheet : (s.VIEWS > 0 ? s.PEDIDOS / s.VIEWS : 0);
           if (s.VIEWS > 0) convs.push(s._conv);
         });
         var avgV = mean(skus.map(function (s) { return s.VIEWS; }));
         var avgC = mean(convs.length ? convs : [0]);
         skus.forEach(function (s) {
           var v = s.VIEWS, c = s._conv;
-          if (v > avgV && c < avgC) { s.ACAO_ABRIL = 'Bota Fora'; s._bf = true; s._maes = false; }
-          else if (v < avgV && c > avgC) { s.ACAO_ABRIL = 'Potencial Mães'; s._bf = false; s._maes = true; }
-          else { s.ACAO_ABRIL = '—'; s._bf = false; s._maes = false; }
+          if (v > avgV && c < avgC) { s._bf = true; s._maes = false; }
+          else if (v < avgV && c > avgC) { s._bf = false; s._maes = true; }
+          else { s._bf = false; s._maes = false; }
         });
       }
 
+      /** Exibição: faturamento e valores monetários (R$ 1.234,56). */
       function fmtMoney(n) {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(n);
+        if (n == null || !isFinite(Number(n))) return '—';
+        return Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       }
+      /** Qualquer número na tela — mesmo padrão BRL (pedido do layout). */
       function fmtInt(n) {
-        return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(n);
+        if (n == null || !isFinite(Number(n))) return '—';
+        return Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       }
       function fmtPct(n) {
         if (!isFinite(n)) return '—';
@@ -526,38 +1318,35 @@
         return d.innerHTML;
       }
 
-      var state = { currRows: [], prevRows: [] };
-      var lastSkus = [];
-      var lastContext = {};
-
       function plotlyBase() {
         return {
+          height: 380,
+          autosize: true,
           paper_bgcolor: '#ffffff',
-          plot_bgcolor: '#fafafa',
-          font: { family: 'Inter, system-ui, sans-serif', size: 11, color: COL_TEXT },
-          margin: { l: 52, r: 20, t: 24, b: 56 },
+          plot_bgcolor: '#ffffff',
+          font: { family: 'Inter, Segoe UI, sans-serif', size: 11, color: COL_TEXT },
+          margin: { l: 52, r: 16, t: 20, b: 48 },
           xaxis: { gridcolor: COL_GRID, zerolinecolor: COL_GRID, tickfont: { size: 10, color: COL_MUTED }, automargin: true },
           yaxis: { gridcolor: COL_GRID, zerolinecolor: COL_GRID, tickfont: { size: 10, color: COL_MUTED }, automargin: true }
         };
       }
-
-      function renderChartVol(byVol) {
+      function renderChartVol(targetId, byVol) {
         var base = plotlyBase();
         var cats = Object.keys(byVol).sort(function (a, b) { return byVol[a] - byVol[b]; });
         var vals = cats.map(function (c) { return byVol[c]; });
-        var lm = cats.length ? Math.min(200, 40 + Math.max.apply(null, cats.map(function (c) { return c.length * 6 }))) : 100;
-        Plotly.react('chart-vol-cat', cats.length ? [{
+        var lm = cats.length ? Math.min(200, 36 + Math.max.apply(null, cats.map(function (c) { return c.length * 6 }))) : 100;
+        Plotly.react(targetId, cats.length ? [{
           type: 'bar', orientation: 'h', y: cats, x: vals,
           marker: { color: COL_OLIVE, line: { width: 0 } },
           hovertemplate: '%{y}<br>Qtd: %{x:,.0f}<extra></extra>'
         }] : [{ type: 'bar', orientation: 'h', y: [''], x: [0], marker: { opacity: 0 }, hoverinfo: 'skip' }], Object.assign({}, base, {
-          margin: { l: lm, r: 16, t: 12, b: 36 },
-          xaxis: Object.assign({}, base.xaxis, { title: { text: 'Volume (unidades)' } }),
+          height: 380,
+          margin: { l: lm, r: 12, t: 10, b: 32 },
+          xaxis: Object.assign({}, base.xaxis, { title: { text: 'Volume' } }),
           yaxis: Object.assign({}, base.yaxis, { showticklabels: !!cats.length })
         }), { responsive: true, displayModeBar: false });
       }
-
-      function renderChartYoy(byCatCurr, prevCat, hasPrev) {
+      function renderChartYoy(targetId, byCatCurr, prevCat, hasPrev) {
         var base = plotlyBase();
         var yoyCats = Object.keys(byCatCurr).sort(function (a, b) { return byCatCurr[b] - byCatCurr[a]; });
         var yoyVals = [];
@@ -572,53 +1361,722 @@
         } else {
           yoyCats = ['—']; yoyVals = [0]; colors = [COL_GRID];
         }
-        Plotly.react('chart-yoy-cat', [{
+        Plotly.react(targetId, [{
           type: 'bar', x: yoyCats, y: yoyVals,
           marker: { color: hasPrev ? colors : COL_MUTED, line: { width: 0 } },
           hovertemplate: '%{x}<br>%{y:.1f}%<extra></extra>'
         }], Object.assign({}, base, {
-          margin: { l: 48, r: 16, t: 12, b: Math.min(180, 60 + yoyCats.length * 8) },
-          xaxis: Object.assign({}, base.xaxis, { title: { text: 'Categoria' }, tickangle: -32, tickfont: { size: 9 }, categoryorder: 'array', categoryarray: yoyCats }),
-          yaxis: Object.assign({}, base.yaxis, { title: { text: 'YoY %' }, ticksuffix: '%', zeroline: true, zerolinecolor: COL_TEXT }),
-          annotations: hasPrev ? [] : [{ x: 0.5, y: 0.5, xref: 'paper', yref: 'paper', showarrow: false, text: 'Carregue período anterior', font: { size: 12, color: COL_MUTED } }]
+          height: 380,
+          margin: { l: 44, r: 12, t: 10, b: Math.min(160, 52 + yoyCats.length * 8) },
+          xaxis: Object.assign({}, base.xaxis, { title: { text: 'Categoria' }, tickangle: -28, tickfont: { size: 9 }, categoryorder: 'array', categoryarray: yoyCats }),
+          yaxis: Object.assign({}, base.yaxis, { title: { text: 'YoY %' }, ticksuffix: '%', zeroline: true }),
+          annotations: hasPrev ? [] : [{ x: 0.5, y: 0.5, xref: 'paper', yref: 'paper', showarrow: false, text: 'Sem período anterior', font: { size: 11, color: COL_MUTED } }]
         }), { responsive: true, displayModeBar: false });
       }
 
+      /**
+       * Barras agrupadas: coluna 1 = período anterior, coluna 2 = período atual (ex.: 2025 vs 2026).
+       * categoryOrder opcional: fixa ordem e categorias (Visão Geral: só categorias com itens na Curva A).
+       */
+      function renderChartCatYearCompare(targetId, fatByPrev, fatByCurr, labelPrev, labelCurr, categoryOrder) {
+        var cats;
+        if (categoryOrder && categoryOrder.length) {
+          cats = categoryOrder.slice();
+        } else {
+          var keys = {};
+          Object.keys(fatByPrev || {}).forEach(function (k) { keys[k] = true; });
+          Object.keys(fatByCurr || {}).forEach(function (k) { keys[k] = true; });
+          cats = Object.keys(keys).sort(function (a, b) {
+            var ta = (fatByCurr[a] || 0) + (fatByPrev[a] || 0);
+            var tb = (fatByCurr[b] || 0) + (fatByPrev[b] || 0);
+            return tb - ta;
+          });
+        }
+        var base = plotlyBase();
+        if (!cats.length) {
+          Plotly.react(targetId, [{ type: 'bar', x: ['—'], y: [0], marker: { color: '#e5e7eb' }, hoverinfo: 'skip' }], Object.assign({}, base, {
+            height: 400,
+            margin: { l: 52, r: 16, t: 24, b: 48 },
+            annotations: [{ x: 0.5, y: 0.5, xref: 'paper', yref: 'paper', showarrow: false, text: 'Sem categorias na Curva A', font: { size: 11, color: COL_MUTED } }]
+          }), { responsive: true, displayModeBar: false });
+          return;
+        }
+        var vPrev = cats.map(function (c) { return fatByPrev[c] || 0; });
+        var vCurr = cats.map(function (c) { return fatByCurr[c] || 0; });
+        var hPrev = vPrev.map(function (v) { return fmtMoney(v); });
+        var hCurr = vCurr.map(function (v) { return fmtMoney(v); });
+        Plotly.react(targetId, [
+          {
+            type: 'bar',
+            name: labelPrev,
+            x: cats,
+            y: vPrev,
+            marker: { color: COL_MUTED, line: { width: 0 } },
+            customdata: hPrev,
+            hovertemplate: '%{x}<br>' + labelPrev + ': %{customdata}<extra></extra>'
+          },
+          {
+            type: 'bar',
+            name: labelCurr,
+            x: cats,
+            y: vCurr,
+            marker: { color: COL_OLIVE, line: { width: 0 } },
+            customdata: hCurr,
+            hovertemplate: '%{x}<br>' + labelCurr + ': %{customdata}<extra></extra>'
+          }
+        ], Object.assign({}, base, {
+          height: 420,
+          barmode: 'group',
+          margin: { l: 56, r: 16, t: 40, b: Math.min(200, 48 + cats.length * 6) },
+          xaxis: Object.assign({}, base.xaxis, { title: { text: 'Categoria' }, tickangle: -28, tickfont: { size: 9 }, categoryorder: 'array', categoryarray: cats }),
+          yaxis: Object.assign({}, base.yaxis, {
+            title: { text: 'Faturamento' },
+            tickprefix: 'R$ ',
+            tickformat: ',.0f'
+          }),
+          legend: { orientation: 'h', yanchor: 'bottom', y: 1.02, x: 0, font: { size: 10 } }
+        }), { responsive: true, displayModeBar: false });
+      }
+
+      /** Visão Geral: só categorias que têm pelo menos um SKU na Curva A (período atual); ordena por fat. atual desc. */
+      function buildGeralCategoryFats(fatPrev, fatCurr, skusCurvaA) {
+        var allow = {};
+        skusCurvaA.forEach(function (s) {
+          var c = s.CATEGORIA != null && String(s.CATEGORIA).trim() !== '' ? String(s.CATEGORIA).trim() : 'OUTROS';
+          allow[c] = true;
+        });
+        var order = Object.keys(allow).sort(function (a, b) {
+          return (fatCurr[b] || 0) - (fatCurr[a] || 0);
+        });
+        var prevOut = {};
+        var currOut = {};
+        order.forEach(function (k) {
+          currOut[k] = (fatCurr && fatCurr[k] != null) ? fatCurr[k] : 0;
+          prevOut[k] = (fatPrev && fatPrev[k] != null) ? fatPrev[k] : 0;
+        });
+        return { prev: prevOut, curr: currOut, order: order };
+      }
+
+      function renderChartSharePie(targetId, fatBy) {
+        var base = plotlyBase();
+        var entries = Object.keys(fatBy).map(function (k) { return { k: k, v: fatBy[k] }; }).filter(function (x) { return x.v > 0; });
+        entries.sort(function (a, b) { return b.v - a.v; });
+        var total = entries.reduce(function (s, x) { return s + x.v; }, 0);
+        if (total <= 0) {
+          Plotly.react(targetId, [{
+            type: 'pie', labels: ['Sem dados'], values: [1], hole: 0.45,
+            marker: { colors: ['#e5e7eb'] }, textinfo: 'none', hoverinfo: 'skip'
+          }], Object.assign({}, base, { height: 320, margin: { l: 20, r: 20, t: 16, b: 16 }, showlegend: false }), { responsive: true, displayModeBar: false });
+          return;
+        }
+        var labels = entries.map(function (x) { return x.k; });
+        var values = entries.map(function (x) { return x.v; });
+        var fatHover = values.map(function (v) { return fmtMoney(v); });
+        var colors = labels.map(function (_, i) { return SHARE_PALETTE[i % SHARE_PALETTE.length]; });
+        Plotly.react(targetId, [{
+          type: 'pie',
+          labels: labels,
+          values: values,
+          customdata: fatHover,
+          hole: 0.45,
+          marker: { colors: colors },
+          textinfo: 'label+percent',
+          texttemplate: '%{percent:.1%}',
+          insidetextorientation: 'horizontal',
+          hovertemplate: '%{label}<br>%{customdata}<br>%{percent}<extra></extra>'
+        }], Object.assign({}, base, {
+          height: 320,
+          margin: { l: 16, r: 16, t: 12, b: 12 },
+          showlegend: labels.length <= 12,
+          legend: { font: { size: 9 }, orientation: 'v', x: 1.02, y: 1 }
+        }), { responsive: true, displayModeBar: false });
+      }
+
+      function renderChartShareFatBar(targetId, fatBy) {
+        var base = plotlyBase();
+        var entries = Object.keys(fatBy).map(function (k) { return { k: k, v: fatBy[k] }; }).filter(function (x) { return x.v > 0; });
+        entries.sort(function (a, b) { return a.v - b.v; });
+        var total = entries.reduce(function (s, x) { return s + x.v; }, 0);
+        if (total <= 0) {
+          Plotly.react(targetId, [{ type: 'bar', orientation: 'h', y: ['—'], x: [0], marker: { color: '#e5e7eb' }, hoverinfo: 'skip' }], Object.assign({}, base, {
+            height: 320, margin: { l: 120, r: 12, t: 10, b: 28 }
+          }), { responsive: true, displayModeBar: false });
+          return;
+        }
+        var labels = entries.map(function (x) { return x.k; });
+        var pct = entries.map(function (x) { return (x.v / total) * 100; });
+        var fatLbl = entries.map(function (x) { return fmtMoney(x.v); });
+        var colors = labels.map(function (_, i) { return SHARE_PALETTE[(entries.length - 1 - i) % SHARE_PALETTE.length]; });
+        Plotly.react(targetId, [{
+          type: 'bar',
+          orientation: 'h',
+          y: labels,
+          x: pct,
+          customdata: fatLbl,
+          marker: { color: colors, line: { width: 0 } },
+          hovertemplate: '%{y}<br>Share faturamento: %{x:.1f}%<br>%{customdata}<extra></extra>'
+        }], Object.assign({}, base, {
+          height: Math.min(520, 120 + labels.length * 22),
+          margin: { l: Math.min(220, 36 + Math.max.apply(null, labels.map(function (l) { return l.length * 5.5; }))), r: 12, t: 10, b: 28 },
+          xaxis: Object.assign({}, base.xaxis, { title: { text: '% do faturamento' }, ticksuffix: '%', range: [0, Math.min(100, Math.max.apply(null, pct) * 1.15)] }),
+          yaxis: Object.assign({}, base.yaxis, { automargin: true, showticklabels: true })
+        }), { responsive: true, displayModeBar: false });
+      }
+
+      /**
+       * Cards 1–2: totalFaturamentoBruto e fatCurvaA vêm do arquivo inteiro do período atual (state.currRows).
+       * YoY: mesmos SKUs da Curva A global vs arquivo anterior completo.
+       */
+      function renderKpis(totalFaturamentoBruto, fatCurvaA, hasPrevFile, skusGlobalCurvaAComYoY, totalPedidos, totalPedidosPrev, churnedCount, churnedFat) {
+        var el = document.getElementById('kpi-row');
+
+        var prevCurvaA = 0;
+        skusGlobalCurvaAComYoY.forEach(function (s) {
+          prevCurvaA += (s._prevFat != null && isFinite(s._prevFat)) ? s._prevFat : 0;
+        });
+        var yoyAbs = hasPrevFile ? (fatCurvaA - prevCurvaA) : null;
+        var yoyPct = (hasPrevFile && prevCurvaA > 0) ? ((fatCurvaA / prevCurvaA) - 1) * 100 : null;
+
+        function yoyBadge(pct) {
+          if (pct == null || !isFinite(pct)) return '';
+          var color = pct >= 0 ? '#15803d' : '#cd2030';
+          return ' <span style="font-size:12px;font-weight:700;color:' + color + ';">' + (pct >= 0 ? '+' : '') + pct.toFixed(1).replace('.', ',') + '%</span>';
+        }
+
+        // Ticket médio
+        var ticketCurr = totalPedidos > 0 ? totalFaturamentoBruto / totalPedidos : null;
+        var ticketYoy = null;
+        if (hasPrevFile && totalPedidosPrev > 0 && ticketCurr != null) {
+          var prevFatBruto = sumFaturamentoBrutoLinhas(state.prevRows);
+          var prevTicket = prevFatBruto > 0 ? prevFatBruto / totalPedidosPrev : null;
+          if (prevTicket) ticketYoy = ((ticketCurr - prevTicket) / prevTicket) * 100;
+        }
+
+        // Concentração: quantos SKUs = 50% da Curva A
+        var sorted50 = skusGlobalCurvaAComYoY.slice().sort(sortSkuByFatDesc);
+        var cum50 = 0, n50 = 0;
+        for (var i = 0; i < sorted50.length; i++) {
+          cum50 += sorted50[i].FATURAMENTO; n50++;
+          if (fatCurvaA > 0 && cum50 / fatCurvaA >= 0.5) break;
+        }
+
+        var yoyPctCls = yoyPct != null ? (yoyPct >= 0 ? ' mc-pct-pos' : ' mc-pct-neg') : '';
+        var noBase = !hasPrevFile ? '<span style="font-size:10px;color:var(--tx3);">Carregue ' + escapeHtml(G.p1) + ' para YoY</span>' : '';
+
+        var cards = [
+          // 1. Fat. total — apenas período atual
+          '<div class="mc">' +
+            '<div class="mc-l">Faturamento total · ' + escapeHtml(G.p2) + '</div>' +
+            '<div class="mc-v">' + fmtMoney(totalFaturamentoBruto) + '</div>' +
+            '<div class="mc-s">Curva A cobre ' + (totalFaturamentoBruto > 0 ? (fatCurvaA / totalFaturamentoBruto * 100).toFixed(0) : '—') + '% do total</div>' +
+          '</div>',
+          // 2. Fat. Curva A — apenas período atual
+          '<div class="mc">' +
+            '<div class="mc-l">Faturamento Curva A · ' + escapeHtml(G.p2) + '</div>' +
+            '<div class="mc-v">' + fmtMoney(fatCurvaA) + '</div>' +
+            '<div class="mc-s">Pareto 80% · ' + skusGlobalCurvaAComYoY.length + ' SKUs</div>' +
+          '</div>',
+          // 3. Crescimento R$
+          '<div class="mc' + (yoyAbs != null && yoyAbs < 0 ? ' mc-alert' : '') + '">' +
+            '<div class="mc-l">Crescimento Curva A (R$)</div>' +
+            '<div class="mc-v">' + (yoyAbs != null ? fmtMoney(yoyAbs) : (noBase || '—')) + '</div>' +
+            '<div class="mc-s">' + escapeHtml(G.p2) + ' vs ' + escapeHtml(G.p1) + ' · mesmos SKUs</div>' +
+          '</div>',
+          // 4. Ticket médio
+          '<div class="mc">' +
+            '<div class="mc-l">Ticket médio' + yoyBadge(ticketYoy) + '</div>' +
+            '<div class="mc-v">' + (ticketCurr != null ? fmtMoney(ticketCurr) : '—') + '</div>' +
+            '<div class="mc-s">' + (totalPedidos > 0 ? Number(totalPedidos).toLocaleString('pt-BR') + ' pedidos em ' + escapeHtml(G.p2) : 'sem dados de pedidos') + '</div>' +
+          '</div>',
+          // 5. Churn ou concentração
+          churnedCount > 0
+            ? '<div class="mc mc-warn"><div class="mc-l">Saíram da Curva A</div><div class="mc-v">' + churnedCount + ' SKU' + (churnedCount > 1 ? 's' : '') + '</div><div class="mc-s">Representavam ' + fmtMoney(churnedFat) + ' em ' + escapeHtml(G.p1) + '</div></div>'
+            : '<div class="mc' + (n50 <= 3 ? ' mc-warn' : '') + '"><div class="mc-l">Concentração</div><div class="mc-v">' + n50 + ' SKU' + (n50 > 1 ? 's' : '') + '</div><div class="mc-s">Respondem por 50% da Curva A' + (n50 <= 3 ? ' · <strong>alto risco</strong>' : '') + '</div></div>'
+        ];
+
+        el.className = 'g5';
+        el.innerHTML = cards.join('');
+      }
+
+      /**
+       * Tabela de categorias sênior: saúde · comparativo · Δ share · qtd · drill-down de SKUs.
+       */
+      function renderCatDetailTable(fatByPrev, fatByCurr, labelPrev, labelCurr, qtdByCurr, skusGlobalA, hasPrev) {
+        var th1 = document.getElementById('th-cat-p1');
+        var th2 = document.getElementById('th-cat-p2');
+        if (th1) th1.textContent = labelPrev;
+        if (th2) th2.textContent = labelCurr;
+        var tbody = document.getElementById('tbody-cat-detail');
+        var tfoot = document.getElementById('tfoot-cat-detail');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (tfoot) tfoot.innerHTML = '';
+
+        // Monta lista de categorias ordenada por fat. atual desc
+        var keys = {};
+        Object.keys(fatByPrev || {}).forEach(function (k) { keys[k] = true; });
+        Object.keys(fatByCurr || {}).forEach(function (k) { keys[k] = true; });
+        var cats = Object.keys(keys).sort(function (a, b) { return (fatByCurr[b] || 0) - (fatByCurr[a] || 0); });
+
+        if (!cats.length) {
+          tbody.innerHTML = '<tr><td colspan="9" style="color:var(--tx3);">Nenhuma categoria na Curva A.</td></tr>';
+          return;
+        }
+
+        var totalCurr = cats.reduce(function (a, c) { return a + (fatByCurr[c] || 0); }, 0);
+        var totalPrev = cats.reduce(function (a, c) { return a + (fatByPrev[c] || 0); }, 0);
+        var totalQtd  = cats.reduce(function (a, c) { return a + (qtdByCurr[c]  || 0); }, 0);
+
+        // Agrupa SKUs por categoria
+        var skusByCat = {};
+        (skusGlobalA || []).forEach(function (s) {
+          var c = s.CATEGORIA || 'OUTROS';
+          if (!skusByCat[c]) skusByCat[c] = [];
+          skusByCat[c].push(s);
+        });
+
+        cats.forEach(function (cat, idx) {
+          var p = fatByPrev[cat] || 0;
+          var c = fatByCurr[cat] || 0;
+          var delta    = c - p;
+          var varPct   = p > 0 ? ((c - p) / p) * 100 : (c > 0 ? 100 : null);
+          var shareP1  = totalPrev > 0 ? p / totalPrev * 100 : 0;
+          var shareP2  = totalCurr > 0 ? c / totalCurr * 100 : 0;
+          var dShare   = shareP2 - shareP1;
+          var qtd      = qtdByCurr[cat] || 0;
+          var catSkus  = (skusByCat[cat] || []).slice().sort(sortSkuByFatDesc);
+          var health   = getCatHealth(catSkus, hasPrev);
+
+          var deltaCls  = hasPrev ? (delta >= 0 ? ' class="tr delta-pos"' : ' class="tr delta-neg"') : ' class="tr"';
+          var varStyle  = varPct != null ? (varPct >= 0 ? 'color:var(--grtx);font-weight:700;' : 'color:var(--rd);font-weight:700;') : '';
+          var shareCls  = !hasPrev || Math.abs(dShare) < 0.05 ? 'share-neu' : (dShare > 0 ? 'share-gain' : 'share-loss');
+          var shareStr  = !hasPrev ? '—' : (dShare > 0 ? '+' : '') + dShare.toFixed(1).replace('.', ',') + 'pp';
+
+          // Linha principal
+          var tr = document.createElement('tr');
+          tr.className = 'tr-cat-main';
+          tr.innerHTML =
+            '<td style="width:20px;text-align:center;"><span class="cat-toggle" id="cat-tog-' + idx + '">▶</span></td>' +
+            '<td><span class="sig-badge ' + health.cls + '">' + health.label + '</span></td>' +
+            '<td><strong>' + escapeHtml(cat) + '</strong></td>' +
+            '<td class="tr">' + fmtMoney(p) + '</td>' +
+            '<td class="tr">' + fmtMoney(c) + '</td>' +
+            '<td' + deltaCls + '>' + (hasPrev ? fmtMoney(delta) : '—') + '</td>' +
+            '<td class="tr" style="' + varStyle + '">' + (varPct != null ? fmtPct(varPct) : '—') + '</td>' +
+            '<td class="tr"><span class="' + shareCls + '">' + shareStr + '</span></td>' +
+            '<td class="tr">' + (qtd > 0 ? Number(qtd).toLocaleString('pt-BR') : '—') + '</td>';
+          tbody.appendChild(tr);
+
+          // Linha de drill-down (oculta)
+          var drillTr = document.createElement('tr');
+          drillTr.className = 'tr-cat-drill';
+          drillTr.id = 'cat-drill-' + idx;
+          drillTr.style.display = 'none';
+          var dHtml = '<td colspan="9"><div class="cat-drill-inner">';
+          if (catSkus.length) {
+            dHtml += '<table><thead><tr><th>Código</th><th>Nome</th><th class="tr">Faturamento</th><th class="tr">YoY %</th><th>Sinal</th></tr></thead><tbody>';
+            catSkus.slice(0, 5).forEach(function (s) {
+              var sig = getSkuSignal(s);
+              var yoyHtml = s._yoySkuPct != null
+                ? '<span class="' + (s._yoySkuPct >= 5 ? 'td-yoy-pos' : s._yoySkuPct >= -10 ? 'td-yoy-neu' : 'td-yoy-neg') + '">' + (s._yoySkuPct >= 0 ? '+' : '') + s._yoySkuPct.toFixed(1).replace('.', ',') + '%</span>'
+                : '<span class="td-yoy-neu">—</span>';
+              dHtml += '<tr><td style="color:var(--tx2);white-space:nowrap;">' + escapeHtml(extractSkuCode(s.COD_DESCR)) + '</td><td>' + escapeHtml(extractSkuName(s.COD_DESCR)) + '</td><td class="tr">' + fmtMoney(s.FATURAMENTO) + '</td><td class="tr">' + yoyHtml + '</td><td><span class="sig-badge ' + sig.cls + '">' + sig.label + '</span></td></tr>';
+            });
+            if (catSkus.length > 5) dHtml += '<tr><td colspan="5" style="color:var(--tx3);font-size:10.5px;padding:4px 8px;">+ ' + (catSkus.length - 5) + ' SKU(s) adicionais na Curva A</td></tr>';
+            dHtml += '</tbody></table>';
+          } else {
+            dHtml += '<span style="color:var(--tx3);font-size:12px;">Sem SKUs nesta categoria no recorte atual.</span>';
+          }
+          dHtml += '</div></td>';
+          drillTr.innerHTML = dHtml;
+          tbody.appendChild(drillTr);
+
+          // Toggle click
+          ;(function (i) {
+            tr.addEventListener('click', function () {
+              var drill = document.getElementById('cat-drill-' + i);
+              var tog   = document.getElementById('cat-tog-'   + i);
+              if (!drill) return;
+              var isOpen = drill.style.display !== 'none';
+              drill.style.display = isOpen ? 'none' : '';
+              if (tog) tog.classList.toggle('open', !isOpen);
+            });
+          }(idx));
+        });
+
+        // Rodapé com totais
+        if (tfoot) {
+          var totDelta  = totalCurr - totalPrev;
+          var totVarPct = totalPrev > 0 ? ((totalCurr - totalPrev) / totalPrev) * 100 : null;
+          var tdCls  = hasPrev ? (totDelta >= 0 ? ' class="tr delta-pos"' : ' class="tr delta-neg"') : ' class="tr"';
+          var tvStyle = totVarPct != null ? (totVarPct >= 0 ? 'color:var(--grtx);font-weight:800;' : 'color:var(--rd);font-weight:800;') : '';
+          tfoot.innerHTML =
+            '<tr>' +
+              '<td></td><td></td>' +
+              '<td>Total</td>' +
+              '<td class="tr">' + fmtMoney(totalPrev) + '</td>' +
+              '<td class="tr">' + fmtMoney(totalCurr) + '</td>' +
+              '<td' + tdCls + '>' + (hasPrev ? fmtMoney(totDelta) : '—') + '</td>' +
+              '<td class="tr" style="' + tvStyle + '">' + (totVarPct != null ? fmtPct(totVarPct) : '—') + '</td>' +
+              '<td class="tr">—</td>' +
+              '<td class="tr">' + (totalQtd > 0 ? Number(totalQtd).toLocaleString('pt-BR') : '—') + '</td>' +
+            '</tr>';
+        }
+      }
+
+      function fillCategoryCompareTable(tbodyId, th1Id, th2Id, fatByPrev, fatByCurr, labelPrev, labelCurr, showVarPct, categoryOrder) {
+        var th1 = document.getElementById(th1Id);
+        var th2 = document.getElementById(th2Id);
+        if (th1) th1.textContent = labelPrev;
+        if (th2) th2.textContent = labelCurr;
+        var tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        var cats;
+        if (categoryOrder && categoryOrder.length) {
+          cats = categoryOrder.slice();
+        } else {
+          var keys = {};
+          Object.keys(fatByPrev || {}).forEach(function (k) { keys[k] = true; });
+          Object.keys(fatByCurr || {}).forEach(function (k) { keys[k] = true; });
+          cats = Object.keys(keys).sort(function (a, b) {
+            return (fatByCurr[b] || 0) - (fatByCurr[a] || 0);
+          });
+        }
+        var hasPrevData = Object.keys(fatByPrev || {}).some(function (k) { return (fatByPrev[k] || 0) > 0; });
+        var colspan = showVarPct ? 5 : 4;
+        if (!cats.length) {
+          tbody.innerHTML = '<tr><td colspan="' + colspan + '" style="color:var(--tx3);">Nenhuma categoria na Curva A.</td></tr>';
+          return;
+        }
+        cats.forEach(function (cat) {
+          var p = (fatByPrev && fatByPrev[cat] != null) ? fatByPrev[cat] : 0;
+          var c = (fatByCurr && fatByCurr[cat] != null) ? fatByCurr[cat] : 0;
+          var delta = c - p;
+          var deltaCls = hasPrevData ? (delta >= 0 ? ' class="tr delta-pos"' : ' class="tr delta-neg"') : ' class="tr"';
+          var deltaStr = hasPrevData ? fmtMoney(delta) : '—';
+          var tr = document.createElement('tr');
+          var html = '<td>' + escapeHtml(cat) + '</td><td class="tr">' + fmtMoney(p) + '</td><td class="tr">' + fmtMoney(c) + '</td>';
+          html += '<td' + deltaCls + '>' + deltaStr + '</td>';
+          if (showVarPct) {
+            var v = p > 0 ? ((c - p) / p) * 100 : (c > 0 ? 100 : null);
+            var vCls = v != null && isFinite(v) ? (v >= 0 ? ' style="color:var(--grtx);font-weight:700;"' : ' style="color:var(--rd);font-weight:700;"') : '';
+            html += '<td class="tr"' + vCls + '>' + (v != null && isFinite(v) ? fmtPct(v) : '—') + '</td>';
+          }
+          tr.innerHTML = html;
+          tbody.appendChild(tr);
+        });
+      }
+
+      function renderGeralInsights(fatByPrev, fatByCurr, hasPrev, churnedSkus, skusGlobalA) {
+        var el = document.getElementById('geral-insights');
+        if (!el) return;
+
+        function item(color, html) {
+          return '<div style="padding:7px 0 7px 10px;border-left:3px solid ' + color + ';margin-bottom:6px;font-size:12.5px;line-height:1.55;">' + html + '</div>';
+        }
+
+        var html = '';
+
+        // Categorias YoY
+        if (hasPrev) {
+          var arr = [];
+          var keys = {};
+          Object.keys(fatByPrev || {}).forEach(function (k) { keys[k] = true; });
+          Object.keys(fatByCurr || {}).forEach(function (k) { keys[k] = true; });
+          Object.keys(keys).forEach(function (cat) {
+            var p = fatByPrev[cat] || 0, c = fatByCurr[cat] || 0;
+            if (p > 0) arr.push({ cat: cat, y: ((c - p) / p) * 100, delta: c - p });
+          });
+          if (arr.length) {
+            var hi = arr.slice().sort(function (a, b) { return b.y - a.y; })[0];
+            var lo = arr.slice().sort(function (a, b) { return a.y - b.y; })[0];
+            html += item('#15803d', '<strong>' + escapeHtml(hi.cat) + '</strong> lidera o crescimento — <span style="color:#15803d;font-weight:700;">' + fmtPct(hi.y) + '</span> YoY · Δ ' + fmtMoney(hi.delta));
+            if (lo.cat !== hi.cat) {
+              html += item('#cd2030', '<strong>' + escapeHtml(lo.cat) + '</strong> maior queda — <span style="color:#cd2030;font-weight:700;">' + fmtPct(lo.y) + '</span> YoY · Δ ' + fmtMoney(lo.delta));
+            }
+          }
+        } else {
+          html += item('#9ca3af', 'Carregue o período anterior para ativar os insights YoY.');
+        }
+
+        // Concentração
+        if (skusGlobalA && skusGlobalA.length) {
+          var sorted = skusGlobalA.slice().sort(sortSkuByFatDesc);
+          var fatA = sorted.reduce(function (a, s) { return a + s.FATURAMENTO; }, 0);
+          var cum = 0, n50 = 0;
+          for (var i = 0; i < sorted.length; i++) {
+            cum += sorted[i].FATURAMENTO; n50++;
+            if (fatA > 0 && cum / fatA >= 0.5) break;
+          }
+          var concColor = n50 <= 3 ? '#d97706' : '#6b7280';
+          html += item(concColor, '<strong>' + n50 + ' SKU' + (n50 > 1 ? 's</strong>' : '</strong>') + ' concentram 50% da Curva A — ' + (n50 <= 3 ? '<strong style="color:#d97706;">atenção: dependência alta</strong>' : 'diversificação adequada'));
+        }
+
+        // Churn
+        if (hasPrev && churnedSkus && churnedSkus.length > 0) {
+          var churnFat = churnedSkus.reduce(function (a, s) { return a + s.FATURAMENTO; }, 0);
+          html += item('#cd2030', '<strong>' + churnedSkus.length + ' SKU' + (churnedSkus.length > 1 ? 's saíram' : ' saiu') + ' da Curva A</strong> — representavam ' + fmtMoney(churnFat) + ' em ' + escapeHtml(G.p1) + '. Investigar causa.');
+        }
+
+        // Novos na Curva A
+        if (hasPrev && skusGlobalA) {
+          var newInA = skusGlobalA.filter(function (s) { return !s._prevFat || s._prevFat === 0; });
+          if (newInA.length) {
+            var newFat = newInA.reduce(function (a, s) { return a + s.FATURAMENTO; }, 0);
+            html += item('#2563eb', '<strong>' + newInA.length + ' SKU' + (newInA.length > 1 ? 's' : '') + ' novo' + (newInA.length > 1 ? 's' : '') + ' na Curva A</strong> — ' + fmtMoney(newFat) + ' · potencial de consolidação.');
+          }
+        }
+
+        el.innerHTML = html || '<span style="color:var(--tx3);font-size:12px;">Sem dados suficientes.</span>';
+      }
+
+      function rebuildFunilCategorySelect() {
+        var sel = document.getElementById('funil-cat');
+        if (!sel) return;
+        var prev = sel.value;
+        sel.innerHTML = '<option value="">Todas as categorias (visão geral)</option>';
+        Object.keys(fatByCategory(state.currRows)).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); }).forEach(function (c) {
+          var o = document.createElement('option');
+          o.value = c;
+          o.textContent = c;
+          sel.appendChild(o);
+        });
+        if (prev && Array.prototype.some.call(sel.options, function (opt) { return opt.value === prev; })) sel.value = prev;
+      }
+
+      function lerpNum(a, b, t) {
+        return a + (b - a) * t;
+      }
+
+      /** Top 10: do cinza médio (menor % base no grupo) ao verde-oliva fechado (maior %), em tons legíveis sobre branco. */
+      function heatTop10RowBg(idx, pctBases, listLen) {
+        if (idx >= 10 || idx >= listLen) return '';
+        var n = Math.min(10, listLen);
+        var slice = [];
+        var i;
+        for (i = 0; i < n; i++) slice.push(pctBases[i]);
+        var maxP = Math.max.apply(null, slice);
+        var minP = Math.min.apply(null, slice);
+        var t = maxP > minP ? (pctBases[idx] - minP) / (maxP - minP) : 0.5;
+        var r = Math.round(lerpNum(210, 118, t));
+        var g = Math.round(lerpNum(213, 132, t));
+        var b = Math.round(lerpNum(218, 52, t));
+        return 'rgb(' + r + ',' + g + ',' + b + ')';
+      }
+
+      /**
+       * Curva A recalculada: só linhas do recorte (comprador) × filtro de categoria da aba.
+       * Pareto 80% sobre o faturamento total dessa base. % geral = vs arquivo completo atual.
+       */
       function renderFunil() {
         var tb = document.getElementById('tbody-funil');
+        var subEl = document.getElementById('funil-sub');
+        if (!tb) return;
         tb.innerHTML = '';
-        lastSkus.filter(function (s) { return s.CURVA === 'A'; }).sort(function (a, b) { return b.FATURAMENTO - a.FATURAMENTO; }).forEach(function (s) {
-          var conv = s.VIEWS > 0 ? (s._conv * 100).toFixed(2).replace('.', ',') : '—';
+        var w = getWorkingData();
+        var catSel = document.getElementById('funil-cat');
+        var catVal = catSel && catSel.value ? catSel.value : '';
+        var rowsForPareto = catVal ? filterByCat(w.curr, catVal) : w.curr;
+
+        var totalGlobalBruto = (lastContext && lastContext.totalFaturamentoBruto != null)
+          ? lastContext.totalFaturamentoBruto
+          : sumFaturamentoBrutoLinhas(state.currRows);
+
+        var intelBar = document.getElementById('funil-intel-bar');
+
+        if (!rowsForPareto.length) {
+          tb.innerHTML = '<tr><td colspan="10" style="padding:28px;color:var(--tx2);text-align:center;font-size:15px;">Nenhuma linha para este recorte / categoria.</td></tr>';
+          if (subEl) subEl.textContent = 'Ajuste o filtro de categoria ou os filtros superiores (comprador).';
+          if (intelBar) intelBar.style.display = 'none';
+          return;
+        }
+
+        var paretoLocal = computeBrutoParetoCurvaA(rowsForPareto);
+        var list = paretoLocal.skusGlobal.filter(function (s) { return s.CURVA === 'A'; });
+        list.sort(sortSkuByFatDesc);
+
+        // Anexar YoY ao recorte local da Curva A
+        var prevForPareto = catVal ? filterByCat(w.prev, catVal) : w.prev;
+        if (state.prevRows.length) attachSkuYoY(list, prevForPareto);
+
+        if (funilSortDir === 'asc') list.reverse();
+
+        var totalBase = paretoLocal.totalFaturamentoBruto;
+
+        // ── Filtros de display ──────────────────────────────────────
+        var codeQ = funilCodeSearch.trim();
+        var displayList = codeQ ? list.filter(function (s) {
+          return extractSkuCode(s.COD_DESCR).indexOf(codeQ) === 0;
+        }) : list;
+        var nameQ = funilSearchText.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (nameQ) {
+          displayList = displayList.filter(function (s) {
+            var nm = extractSkuName(s.COD_DESCR).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return nm.indexOf(nameQ) >= 0;
+          });
+        }
+
+        var displayPctBases = displayList.map(function (s) {
+          return totalBase > 0 ? (s.FATURAMENTO / totalBase) * 100 : 0;
+        });
+
+        // ── Intel cards (calculado sobre a lista COMPLETA, antes dos filtros de display) ──
+        if (intelBar) {
+          var hasPrevData = state.prevRows.length > 0;
+          var nHero = 0, nUp = 0, nWatch = 0, nRisk = 0, nNew = 0, nStable = 0;
+          var fatRisco = 0, fatCrescendo = 0;
+          var totCurrA = 0, totPrevA = 0;
+          list.forEach(function (s) {
+            totCurrA += s.FATURAMENTO;
+            totPrevA += (s._prevFat || 0);
+            var sig = getSkuSignal(s);
+            if (sig.label === 'Herói')     { nHero++;   fatCrescendo += s.FATURAMENTO; }
+            else if (sig.label === 'Crescendo') { nUp++; fatCrescendo += s.FATURAMENTO; }
+            else if (sig.label === 'Estável')   nStable++;
+            else if (sig.label === 'Atenção')   { nWatch++; fatRisco += s.FATURAMENTO; }
+            else if (sig.label === 'Ruptura')   { nRisk++;  fatRisco += s.FATURAMENTO; }
+            else nNew++;
+          });
+          var yoyTotal = hasPrevData && totPrevA > 0 ? ((totCurrA - totPrevA) / totPrevA) * 100 : null;
+          var yoyStr = yoyTotal != null
+            ? '<span style="color:' + (yoyTotal >= 0 ? '#15803d' : '#cd2030') + ';font-size:13px;font-weight:700;">' + (yoyTotal >= 0 ? '+' : '') + yoyTotal.toFixed(1).replace('.', ',') + '% YoY</span>'
+            : '<span style="color:var(--tx3);font-size:11px;">sem per. anterior</span>';
+
+          intelBar.style.display = 'grid';
+          intelBar.innerHTML =
+            '<div class="intel-card ' + (yoyTotal == null ? '' : yoyTotal >= 0 ? 'ic-green' : 'ic-red') + '">' +
+              '<div class="ic-val">' + list.length + ' SKUs</div>' +
+              '<div class="ic-lbl">Curva A — ' + (catVal || 'Geral') + '</div>' +
+              '<div class="ic-sub">' + yoyStr + ' · ' + fmtMoney(totCurrA) + '</div>' +
+            '</div>' +
+            '<div class="intel-card ic-green">' +
+              '<div class="ic-val">' + (nHero + nUp) + ' SKUs</div>' +
+              '<div class="ic-lbl">Crescendo / Herói</div>' +
+              '<div class="ic-sub">' + fmtMoney(fatCrescendo) + (nHero ? ' · ' + nHero + ' herói' + (nHero > 1 ? 's' : '') : '') + '</div>' +
+            '</div>' +
+            '<div class="intel-card ' + (nRisk + nWatch > 0 ? 'ic-red' : '') + '">' +
+              '<div class="ic-val">' + (nRisk + nWatch) + ' SKUs</div>' +
+              '<div class="ic-lbl">Em risco / Ruptura</div>' +
+              '<div class="ic-sub">' + (nRisk + nWatch > 0 ? fmtMoney(fatRisco) + ' em risco' : 'Nenhum risco identificado') + '</div>' +
+            '</div>' +
+            '<div class="intel-card ic-blue">' +
+              '<div class="ic-val">' + nNew + ' SKUs</div>' +
+              '<div class="ic-lbl">Novos na Curva A</div>' +
+              '<div class="ic-sub">' + nStable + ' estáveis · ' + (nWatch > 0 ? nWatch + ' atenção' : '') + '</div>' +
+            '</div>';
+        }
+
+        if (subEl) {
+          var buyer = document.getElementById('fb-buyer').value || '';
+          var baseTxt = catVal
+            ? ('Pareto 80% só em ' + catVal + ' · base = faturamento da categoria no recorte')
+            : ('Pareto 80% no recorte' + (buyer ? ' (comprador: ' + buyer + ')' : ' (todas as linhas do arquivo atual)'));
+          var filterInfo = (codeQ || nameQ)
+            ? ' · filtro ativo (' + displayList.length + ' de ' + list.length + ' SKUs)'
+            : '';
+          subEl.textContent = baseTxt + ' · % base = participação no total da base · % geral = participação no faturamento bruto do arquivo (' + G.p2 + ').' + filterInfo;
+        }
+
+        if (!list.length) {
+          tb.innerHTML = '<tr><td colspan="10" style="padding:28px;color:var(--tx2);text-align:center;font-size:15px;">Nenhum SKU na Curva A para esta base.</td></tr>';
+          return;
+        }
+        if (!displayList.length) {
+          tb.innerHTML = '<tr><td colspan="10" style="padding:28px;color:var(--tx2);text-align:center;font-size:15px;">Nenhum SKU corresponde ao filtro.</td></tr>';
+          return;
+        }
+
+        // ── Renderização das linhas ──────────────────────────────────
+        var cumPct = 0;
+        displayList.forEach(function (s, idx) {
+          var skuCode = extractSkuCode(s.COD_DESCR);
+          var skuName = extractSkuName(s.COD_DESCR);
+          var pctBase = displayPctBases[idx];
+          cumPct += pctBase;
+          var pctGlobal = totalGlobalBruto > 0 ? (s.FATURAMENTO / totalGlobalBruto) * 100 : 0;
+          var bg = heatTop10RowBg(idx, displayPctBases, displayList.length);
+          var sig = getSkuSignal(s);
+
+          var yoyHtml;
+          if (s._yoySkuPct != null) {
+            var yoyVal = s._yoySkuPct;
+            var yoyCls = yoyVal >= 5 ? 'td-yoy-pos' : yoyVal >= -10 ? 'td-yoy-neu' : 'td-yoy-neg';
+            yoyHtml = '<span class="' + yoyCls + '">' + (yoyVal >= 0 ? '+' : '') + yoyVal.toFixed(1).replace('.', ',') + '%</span>';
+          } else {
+            yoyHtml = '<span class="td-yoy-neu">—</span>';
+          }
+
           var tr = document.createElement('tr');
-          tr.className = 'hover:bg-[#f8f9fa]';
+          tr.className = 'tr-curva-a';
+          if (bg) tr.style.backgroundColor = bg;
           tr.innerHTML =
-            '<td class="px-3 py-2 max-w-[200px] truncate">' + escapeHtml(s.COD_DESCR) + '</td>' +
-            '<td class="px-3 py-2 text-[#495057]">' + escapeHtml(s.CATEGORIA) + '</td>' +
-            '<td class="px-3 py-2 text-right tabular-nums">' + fmtMoney(s.FATURAMENTO) + '</td>' +
-            '<td class="px-3 py-2 text-right tabular-nums">' + fmtInt(s.PEDIDOS) + '</td>' +
-            '<td class="px-3 py-2 text-right tabular-nums">' + fmtInt(s.VIEWS) + '</td>' +
-            '<td class="px-3 py-2 text-right tabular-nums font-medium">' + conv + '</td>';
+            '<td class="td-pos">' + (idx + 1) + '</td>' +
+            '<td><span class="sig-badge ' + sig.cls + '">' + sig.label + '</span></td>' +
+            '<td style="font-variant-numeric:tabular-nums;white-space:nowrap;font-size:12px;color:var(--tx2);">' + escapeHtml(skuCode || s.COD_DESCR) + '</td>' +
+            '<td>' + escapeHtml(s.CATEGORIA) + '</td>' +
+            '<td>' + escapeHtml(skuName) + '</td>' +
+            '<td class="tr td-fat">' + fmtMoney(s.FATURAMENTO) + '</td>' +
+            '<td class="tr td-fat">' + yoyHtml + '</td>' +
+            '<td class="tr td-fat">' + cumPct.toFixed(1).replace('.', ',') + '%</td>' +
+            '<td class="tr td-fat">' + pctBase.toFixed(1).replace('.', ',') + '%</td>' +
+            '<td class="tr td-fat">' + pctGlobal.toFixed(1).replace('.', ',') + '%</td>';
           tb.appendChild(tr);
         });
       }
 
       function renderDiagnostico() {
         var tb = document.getElementById('tbody-diagnostico');
+        var tbCat = document.getElementById('tbody-diag-cat');
         var empty = document.getElementById('diag-empty');
         tb.innerHTML = '';
-        var lost = lastSkus.filter(function (s) { return s.CURVA === 'A' && s._ruptura; }).sort(function (a, b) { return (a._yoySkuPct || 0) - (b._yoySkuPct || 0); });
-        if (!lost.length) { empty.classList.remove('hidden'); return; }
-        empty.classList.add('hidden');
+        tbCat.innerHTML = '';
+        var lost = lastSkus.filter(function (s) { return s._ruptura; });
+        empty.style.display = lost.length ? 'none' : 'block';
+
+        var byCat = {};
         lost.forEach(function (s) {
-          var tr = document.createElement('tr');
-          tr.className = 'row-ruptura';
-          tr.innerHTML =
-            '<td class="px-3 py-2">' + escapeHtml(s.COD_DESCR) + '</td>' +
-            '<td class="px-3 py-2">' + escapeHtml(s.CATEGORIA) + '</td>' +
-            '<td class="px-3 py-2 text-right tabular-nums">' + fmtMoney(s.FATURAMENTO) + '</td>' +
-            '<td class="px-3 py-2 text-right tabular-nums">' + fmtMoney(s._prevFat) + '</td>' +
-            '<td class="px-3 py-2 text-right font-semibold" style="color:#cd2030;">' + fmtPct(s._yoySkuPct) + '</td>';
-          tb.appendChild(tr);
+          var k = s.CATEGORIA != null && String(s.CATEGORIA).trim() !== '' ? String(s.CATEGORIA).trim() : 'OUTROS';
+          if (!byCat[k]) byCat[k] = { n: 0, fat: 0, worst: null };
+          byCat[k].n++;
+          byCat[k].fat += s.FATURAMENTO;
+          var y = s._yoySkuPct;
+          if (y != null && isFinite(y)) {
+            if (byCat[k].worst == null || y < byCat[k].worst) byCat[k].worst = y;
+          }
+        });
+        var catOrder = Object.keys(byCat).sort(function (a, b) { return byCat[b].fat - byCat[a].fat; });
+        if (!catOrder.length) {
+          tbCat.innerHTML = '<tr><td colspan="4" style="color:var(--tx3);">Nenhuma ruptura no filtro atual.</td></tr>';
+        } else {
+          catOrder.forEach(function (cat) {
+            var x = byCat[cat];
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+              '<td>' + escapeHtml(cat) + '</td><td class="tr">' + fmtInt(x.n) + '</td><td class="tr">' + fmtMoney(x.fat) + '</td><td class="tr" style="color:var(--rd);font-weight:700;">' +
+              (x.worst != null ? fmtPct(x.worst) : '—') + '</td>';
+            tbCat.appendChild(tr);
+          });
+        }
+
+        var groups = {};
+        lost.forEach(function (s) {
+          var k = s.CATEGORIA != null && String(s.CATEGORIA).trim() !== '' ? String(s.CATEGORIA).trim() : 'OUTROS';
+          if (!groups[k]) groups[k] = [];
+          groups[k].push(s);
+        });
+        var cats = Object.keys(groups).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); });
+        cats.forEach(function (cat) {
+          var trh = document.createElement('tr');
+          trh.className = 'cat-group-h';
+          trh.innerHTML = '<td colspan="5">' + escapeHtml(cat) + ' · ' + groups[cat].length + ' SKU(s)</td>';
+          tb.appendChild(trh);
+          groups[cat].sort(function (a, b) { return (a._yoySkuPct || 0) - (b._yoySkuPct || 0); }).forEach(function (s) {
+            var tr = document.createElement('tr');
+            tr.className = 'row-ruptura';
+            tr.innerHTML = '<td>' + escapeHtml(s.COD_DESCR) + '</td><td>' + escapeHtml(s.CATEGORIA) + '</td><td class="tr">' + fmtMoney(s.FATURAMENTO) + '</td><td class="tr">' + fmtMoney(s._prevFat) + '</td><td class="tr" style="color:var(--rd);font-weight:800;">' + fmtPct(s._yoySkuPct) + '</td>';
+            tb.appendChild(tr);
+          });
         });
       }
 
@@ -628,20 +2086,20 @@
         var hasM = hasDim(w.curr, 'MARCA');
         var hasT = hasDim(w.curr, 'TIPO');
         if (!hasM && !hasT) {
-          el.innerHTML = '<p class="text-sm text-[#6c757d] card-bi p-4">Não foram detectadas colunas <strong>Marca</strong> ou <strong>Tipo</strong> na planilha. Inclua cabeçalhos como Marca, Brand, Tipo, Segmento etc.</p>';
+          el.innerHTML = '<div class="card">Inclua colunas opcionais <strong>Marca</strong> e/ou <strong>Tipo</strong> na planilha.</div>';
           return;
         }
-        function tableBlock(title, by, color) {
+        function block(title, by, color) {
           var keys = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; });
-          var h = '<div class="card-bi p-4"><h3 class="text-sm font-semibold mb-3" style="color:' + (color || COL_TEXT) + '">' + escapeHtml(title) + '</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-[#f8f9fa] text-[11px] uppercase text-[#6c757d]"><tr><th class="px-3 py-2 text-left">Valor</th><th class="px-3 py-2 text-right">Faturamento</th></tr></thead><tbody>';
+          var h = '<div class="card"><h3 style="font-size:13px;margin-bottom:10px;color:' + color + '">' + escapeHtml(title) + '</h3><table class="data-tbl"><thead><tr><th>Valor</th><th class="tr">Faturamento</th></tr></thead><tbody>';
           keys.forEach(function (k) {
-            h += '<tr class="border-t border-[#E9ECEF]"><td class="px-3 py-2">' + escapeHtml(k) + '</td><td class="px-3 py-2 text-right tabular-nums">' + fmtMoney(by[k]) + '</td></tr>';
+            h += '<tr><td>' + escapeHtml(k) + '</td><td class="tr">' + fmtMoney(by[k]) + '</td></tr>';
           });
-          h += '</tbody></table></div></div>';
+          h += '</tbody></table></div>';
           return h;
         }
-        if (hasM) el.insertAdjacentHTML('beforeend', tableBlock('Por marca', aggByField(w.curr, 'MARCA', 'Sem marca'), COL_OLIVE));
-        if (hasT) el.insertAdjacentHTML('beforeend', tableBlock('Por tipo', aggByField(w.curr, 'TIPO', 'Sem tipo'), COL_WINE));
+        if (hasM) el.insertAdjacentHTML('beforeend', block('Marca', aggByField(w.curr, 'MARCA', 'Sem marca'), COL_OLIVE));
+        if (hasT) el.insertAdjacentHTML('beforeend', block('Tipo', aggByField(w.curr, 'TIPO', 'Sem tipo'), COL_WINE));
       }
 
       function renderCampanhas() {
@@ -649,204 +2107,578 @@
         var maes = document.getElementById('tbody-maes');
         bota.innerHTML = '';
         maes.innerHTML = '';
-        lastSkus.filter(function (s) { return s._bf; }).sort(function (a, b) { return b.VIEWS - a.VIEWS; }).slice(0, 80).forEach(function (s) {
+        lastSkus.filter(function (s) { return s._bf; }).sort(function (a, b) { return b.VIEWS - a.VIEWS; }).slice(0, 60).forEach(function (s) {
           var conv = s.VIEWS > 0 ? (s._conv * 100).toFixed(1).replace('.', ',') : '—';
-          bota.insertAdjacentHTML('beforeend', '<tr class="border-t border-[#E9ECEF]"><td class="px-2 py-1.5 truncate max-w-[140px]">' + escapeHtml(s.COD_DESCR) + '</td><td class="px-2 py-1.5 text-right">' + fmtInt(s.VIEWS) + '</td><td class="px-2 py-1.5 text-right text-[#cd2030] font-medium">' + conv + '</td></tr>');
+          bota.insertAdjacentHTML('beforeend', '<tr><td>' + escapeHtml(s.COD_DESCR) + '</td><td class="tr">' + fmtInt(s.VIEWS) + '</td><td class="tr" style="color:var(--rd);font-weight:700;">' + conv + '</td></tr>');
         });
-        lastSkus.filter(function (s) { return s._maes; }).sort(function (a, b) { return b.FATURAMENTO - a.FATURAMENTO; }).slice(0, 80).forEach(function (s) {
+        lastSkus.filter(function (s) { return s._maes; }).sort(sortSkuByFatDesc).slice(0, 60).forEach(function (s) {
           var conv = s.VIEWS > 0 ? (s._conv * 100).toFixed(1).replace('.', ',') : '—';
-          maes.insertAdjacentHTML('beforeend', '<tr class="border-t border-[#E9ECEF]"><td class="px-2 py-1.5 truncate max-w-[120px]">' + escapeHtml(s.COD_DESCR) + '</td><td class="px-2 py-1.5 text-right">' + fmtInt(s.VIEWS) + '</td><td class="px-2 py-1.5 text-right font-medium text-[#212529]">' + conv + '</td><td class="px-2 py-1.5 text-xs text-[#495057]">' + escapeHtml(s.CATEGORIA) + '</td></tr>');
+          maes.insertAdjacentHTML('beforeend', '<tr><td>' + escapeHtml(s.COD_DESCR) + '</td><td class="tr">' + fmtInt(s.VIEWS) + '</td><td class="tr">' + conv + '</td><td>' + escapeHtml(s.CATEGORIA) + '</td></tr>');
         });
-      }
-
-      function buildInsights(ctx) {
-        var lines = [];
-        var by = ctx.byCatCurr, prev = ctx.prevCat, hasP = ctx.hasPrev;
-        if (hasP && Object.keys(by).length) {
-          var arr = [];
-          Object.keys(by).forEach(function (cat) {
-            var p = prev[cat] || 0;
-            if (p > 0) arr.push({ cat: cat, y: ((by[cat] - p) / p) * 100 });
-          });
-          arr.sort(function (a, b) { return b.y - a.y; });
-          if (arr.length) lines.push('<strong class="text-[#212529]">Alta:</strong> a categoria <em>' + escapeHtml(arr[0].cat) + '</em> lidera o YoY com ' + fmtPct(arr[0].y) + ' — reforçar estoque e visibilidade neste cluster.');
-          arr.sort(function (a, b) { return a.y - b.y; });
-          if (arr.length) lines.push('<strong style="color:#cd2030;">Baixa:</strong> <em>' + escapeHtml(arr[0].cat) + '</em> pressiona o resultado (' + fmtPct(arr[0].y) + ' YoY) — exige plano de recuperação imediato.');
-        } else lines.push('<strong>Contexto:</strong> inclua o período anterior para comparativos automáticos de categorias.');
-        var rup = lastSkus.filter(function (s) { return s._ruptura; }).length;
-        lines.push('<strong style="color:#cd2030;">Ruptura:</strong> ' + rup + ' SKU(s) de Curva A com queda acima de 20% no faturamento vs. ano anterior — priorizar revisão de preço, disponibilidade e página do produto.');
-        var bf = lastSkus.filter(function (s) { return s._bf; }).length;
-        lines.push('<strong class="text-[#212529]">Funil:</strong> ' + bf + ' itens em perfil <em>Bota Fora</em> (alta view, baixa conversão) — candidatos a teste A/B e ajuste de oferta para a campanha de <em>Mães</em>.');
-        while (lines.length < 3) lines.push('Carregue bases completas para insights adicionais.');
-        return lines.slice(0, 3);
       }
 
       function renderScript() {
-        var ol = document.getElementById('script-insights');
-        ol.innerHTML = '';
-        buildInsights(lastContext).forEach(function (html) {
-          var li = document.createElement('li');
-          li.innerHTML = html;
-          ol.appendChild(li);
+        var body = document.getElementById('script-body');
+        if (!body) return;
+        var ctx = lastContext;
+        var skus = ctx.skusGlobalA || lastSkus;
+        var hasP = ctx.hasPrev;
+        var by = ctx.byCatCurvaA || ctx.byCatCurr || {};
+        var prev = ctx.prevCatCurvaA || ctx.prevCat || {};
+        var totalBruto = ctx.totalFaturamentoBruto || 0;
+        var fatA = ctx.fatCurvaA || 0;
+
+        function section(title, colorClass, items) {
+          if (!items.length) return '';
+          var h = '<div class="script-section">';
+          h += '<div class="script-title">' + escapeHtml(title) + '</div>';
+          items.forEach(function (it) {
+            h += '<div class="script-item ' + (it.cls || 'si-gray') + '">' + it.html + '</div>';
+          });
+          return h + '</div>';
+        }
+
+        var html = '';
+
+        // ── 1. ABERTURA ──────────────────────────────────────────────
+        var aberturaItems = [];
+        var pctCoverage = totalBruto > 0 ? (fatA / totalBruto * 100).toFixed(0) : '—';
+        var aText = '<strong>' + skus.length + ' SKUs</strong> compõem a Curva A, representando <strong>' + fmtMoney(fatA) + '</strong> (' + pctCoverage + '% do faturamento total do período).';
+        if (hasP) {
+          var totPrevA = 0;
+          skus.forEach(function (s) { totPrevA += (s._prevFat || 0); });
+          var yoyA = totPrevA > 0 ? ((fatA - totPrevA) / totPrevA * 100) : null;
+          if (yoyA != null) {
+            var yoyColor = yoyA >= 0 ? '#15803d' : '#cd2030';
+            aText += ' YoY da Curva A: <strong style="color:' + yoyColor + ';">' + (yoyA >= 0 ? '+' : '') + yoyA.toFixed(1).replace('.', ',') + '%</strong>.';
+          }
+        }
+        aberturaItems.push({ cls: 'si-gray', html: aText });
+        html += section('1 · Abertura — Saúde da Curva A', '', aberturaItems);
+
+        // ── 2. DESTAQUES POSITIVOS ───────────────────────────────────
+        var posItems = [];
+        var heroSkus = skus.filter(function (s) { return s._yoySkuPct != null && s._yoySkuPct >= 20; });
+        heroSkus.sort(function (a, b) { return b._yoySkuPct - a._yoySkuPct; });
+        heroSkus.slice(0, 3).forEach(function (s) {
+          posItems.push({ cls: 'si-green', html: '<strong>' + escapeHtml(extractSkuName(s.COD_DESCR)) + '</strong> — ' + fmtMoney(s.FATURAMENTO) + ' <span style="color:#15803d;font-weight:700;">(+' + s._yoySkuPct.toFixed(1).replace('.', ',') + '% YoY)</span>' });
         });
+        var upSkus = skus.filter(function (s) { return s._yoySkuPct != null && s._yoySkuPct >= 5 && s._yoySkuPct < 20; });
+        upSkus.sort(sortSkuByFatDesc);
+        upSkus.slice(0, 2).forEach(function (s) {
+          posItems.push({ cls: 'si-green', html: escapeHtml(extractSkuName(s.COD_DESCR)) + ' — ' + fmtMoney(s.FATURAMENTO) + ' <span style="color:#15803d;">(+' + s._yoySkuPct.toFixed(1).replace('.', ',') + '% YoY)</span>' });
+        });
+        if (hasP && Object.keys(by).length) {
+          var catArr = [];
+          Object.keys(by).forEach(function (c) {
+            var p = prev[c] || 0;
+            if (p > 0) catArr.push({ cat: c, y: (by[c] - p) / p * 100, fat: by[c] });
+          });
+          catArr.sort(function (a, b) { return b.y - a.y; });
+          if (catArr.length && catArr[0].y > 0) {
+            posItems.push({ cls: 'si-green', html: 'Categoria destaque: <strong>' + escapeHtml(catArr[0].cat) + '</strong> — ' + fmtMoney(catArr[0].fat) + ' <span style="color:#15803d;font-weight:700;">(' + fmtPct(catArr[0].y) + ' YoY)</span>' });
+          }
+        }
+        if (!posItems.length) posItems.push({ cls: 'si-gray', html: 'Nenhum SKU com crescimento ≥5% vs período anterior.' + (!hasP ? ' (Carregue o período anterior.)' : '') });
+        html += section('2 · Destaques positivos', '', posItems);
+
+        // ── 3. PONTOS DE ATENÇÃO ─────────────────────────────────────
+        var riskItems = [];
+        var ruptura = skus.filter(function (s) { return s._ruptura; });
+        ruptura.sort(function (a, b) { return a._yoySkuPct - b._yoySkuPct; });
+        ruptura.slice(0, 4).forEach(function (s) {
+          var perda = s._prevFat > 0 ? s._prevFat - s.FATURAMENTO : 0;
+          riskItems.push({ cls: 'si-red', html: '<strong>' + escapeHtml(extractSkuName(s.COD_DESCR)) + '</strong> — ' + fmtMoney(s.FATURAMENTO) + ' <span style="color:#cd2030;font-weight:700;">(' + fmtPct(s._yoySkuPct) + ' YoY)</span>' + (perda > 0 ? ' · perda: <strong>' + fmtMoney(perda) + '</strong>' : '') });
+        });
+        var watch = skus.filter(function (s) { return s._yoySkuPct != null && s._yoySkuPct < -10 && s._yoySkuPct >= -20; });
+        watch.sort(function (a, b) { return a._yoySkuPct - b._yoySkuPct; });
+        watch.slice(0, 2).forEach(function (s) {
+          riskItems.push({ cls: 'si-amber', html: escapeHtml(extractSkuName(s.COD_DESCR)) + ' — ' + fmtMoney(s.FATURAMENTO) + ' <span style="color:#d97706;">(' + fmtPct(s._yoySkuPct) + ' YoY) · Atenção</span>' });
+        });
+        if (hasP && Object.keys(by).length) {
+          var catArr2 = [];
+          Object.keys(by).forEach(function (c) {
+            var p = prev[c] || 0;
+            if (p > 0) catArr2.push({ cat: c, y: (by[c] - p) / p * 100 });
+          });
+          catArr2.sort(function (a, b) { return a.y - b.y; });
+          if (catArr2.length && catArr2[0].y < -5) {
+            riskItems.push({ cls: 'si-amber', html: 'Categoria em queda: <strong>' + escapeHtml(catArr2[0].cat) + '</strong> <span style="color:#cd2030;font-weight:700;">(' + fmtPct(catArr2[0].y) + ' YoY)</span> — verificar cobertura de portfólio.' });
+          }
+        }
+        if (!riskItems.length) riskItems.push({ cls: 'si-gray', html: 'Nenhuma ruptura identificada na Curva A.' + (!hasP ? ' (Carregue o período anterior para análise YoY.)' : '') });
+        html += section('3 · Pontos de atenção', '', riskItems);
+
+        // ── 4. CONCENTRAÇÃO & PARETO ─────────────────────────────────
+        var concItems = [];
+        var sorted50 = skus.slice().sort(sortSkuByFatDesc);
+        var cum50 = 0, n50 = 0;
+        for (var i = 0; i < sorted50.length; i++) {
+          cum50 += sorted50[i].FATURAMENTO;
+          n50++;
+          if (fatA > 0 && cum50 / fatA >= 0.5) break;
+        }
+        concItems.push({ cls: 'si-gray', html: '<strong>' + n50 + ' SKU' + (n50 > 1 ? 's' : '') + '</strong> respondem por 50% do faturamento da Curva A. Proteger esses produtos é prioridade máxima.' });
+        if (sorted50.length >= 1) {
+          var top1Pct = fatA > 0 ? (sorted50[0].FATURAMENTO / fatA * 100).toFixed(1) : '—';
+          concItems.push({ cls: 'si-gray', html: 'Maior SKU: <strong>' + escapeHtml(extractSkuName(sorted50[0].COD_DESCR)) + '</strong> — ' + fmtMoney(sorted50[0].FATURAMENTO) + ' (' + top1Pct.replace('.', ',') + '% da Curva A).' });
+        }
+        html += section('4 · Concentração & Pareto', '', concItems);
+
+        // ── 5. OPORTUNIDADES ─────────────────────────────────────────
+        var oppItems = [];
+        var newSkus = skus.filter(function (s) { return !s._prevFat || s._prevFat === 0; });
+        newSkus.sort(sortSkuByFatDesc);
+        if (newSkus.length) {
+          oppItems.push({ cls: 'si-blue', html: '<strong>' + newSkus.length + ' SKU' + (newSkus.length > 1 ? 's' : '') + ' novos</strong> entraram na Curva A — ' + fmtMoney(newSkus.reduce(function (a, s) { return a + s.FATURAMENTO; }, 0)) + '. Potencial de consolidação no próximo período.' });
+        }
+        var bfCount = skus.filter(function (s) { return s._bf; }).length;
+        var maesCount = skus.filter(function (s) { return s._maes; }).length;
+        if (bfCount > 0) oppItems.push({ cls: 'si-amber', html: '<strong>' + bfCount + ' SKU' + (bfCount > 1 ? 's' : '') + '</strong> com alto tráfego e baixa conversão — candidatos a revisão de preço / conteúdo (perfil ' + escapeHtml(G.bf) + ').' });
+        if (maesCount > 0) oppItems.push({ cls: 'si-blue', html: '<strong>' + maesCount + ' SKU' + (maesCount > 1 ? 's' : '') + '</strong> com alta conversão e baixo tráfego — potencial de mídia e destaque (' + escapeHtml(G.camp) + ').' });
+        if (!oppItems.length) oppItems.push({ cls: 'si-gray', html: 'Nenhuma oportunidade identificada com os dados disponíveis.' });
+        html += section('5 · Oportunidades', '', oppItems);
+
+        // ── 6. RECOMENDAÇÕES ─────────────────────────────────────────
+        var recItems = [];
+        if (ruptura.length) recItems.push({ cls: 'si-red', html: '<strong>Defensiva:</strong> Acionar estoque / disponibilidade para os ' + ruptura.length + ' SKU' + (ruptura.length > 1 ? 's' : '') + ' em ruptura. Risco imediato de receita: ' + fmtMoney(ruptura.reduce(function (a, s) { return a + (s._prevFat > s.FATURAMENTO ? s._prevFat - s.FATURAMENTO : 0); }, 0)) + '.' });
+        if (heroSkus.length) recItems.push({ cls: 'si-green', html: '<strong>Ofensiva:</strong> Garantir disponibilidade e visibilidade dos ' + heroSkus.length + ' SKU' + (heroSkus.length > 1 ? 's' : '') + ' em crescimento acelerado (≥+20%).' });
+        if (n50 <= 5) recItems.push({ cls: 'si-amber', html: '<strong>Diversificação:</strong> Portfólio concentrado — apenas ' + n50 + ' SKU' + (n50 > 1 ? 's' : '') + ' respondem por 50% da Curva A. Avaliar desenvolvimento de SKUs adjacentes.' });
+        if (bfCount > 0) recItems.push({ cls: 'si-amber', html: '<strong>Conversão:</strong> Revisar preço e conteúdo dos ' + bfCount + ' SKU' + (bfCount > 1 ? 's' : '') + ' com alto tráfego / baixa conversão antes da próxima campanha.' });
+        if (!recItems.length) recItems.push({ cls: 'si-gray', html: 'Portfólio saudável. Manter acompanhamento semanal dos KPIs da Curva A.' });
+        html += section('6 · Recomendações', '', recItems);
+
+        body.innerHTML = html || '<p style="color:var(--tx2);">Gere a análise para visualizar o briefing.</p>';
       }
 
       function buildPlano() {
         var items = [];
-        lastSkus.filter(function (s) { return s._ruptura; }).slice(0, 5).forEach(function (s) {
-          items.push('Repor / validar estoque e lead time do item: ' + s.COD_DESCR);
+        var skus = (lastContext.skusGlobalA || lastSkus);
+        skus.filter(function (s) { return s._ruptura; }).slice(0, 4).forEach(function (s) {
+          var perda = s._prevFat > 0 ? ' — risco ' + fmtMoney(s._prevFat - s.FATURAMENTO) : '';
+          items.push('[Defesa] Estoque/disponibilidade: ' + extractSkuName(s.COD_DESCR) + perda);
         });
-        lastSkus.filter(function (s) { return s._bf; }).slice(0, 3).forEach(function (s) {
-          items.push('Auditar página e preço do SKU (Bota Fora): ' + s.COD_DESCR);
+        skus.filter(function (s) { return s._yoySkuPct != null && s._yoySkuPct < -10 && s._yoySkuPct >= -20; }).slice(0, 2).forEach(function (s) {
+          items.push('[Monitorar] Queda moderada — checar pricing: ' + extractSkuName(s.COD_DESCR));
         });
-        if (lastContext.hasPrev && Object.keys(lastContext.byCatCurr || {}).length) {
-          var arr = [];
-          Object.keys(lastContext.byCatCurr).forEach(function (cat) {
-            var p = lastContext.prevCat[cat] || 0;
-            if (p > 0) arr.push({ cat: cat, y: ((lastContext.byCatCurr[cat] - p) / p) * 100 });
-          });
-          arr.sort(function (a, b) { return a.y - b.y; });
-          if (arr[0]) items.push('Montar ação corretiva para categoria em maior queda YoY: ' + arr[0].cat);
-        }
-        items.push('Alinhar curadoria da campanha Mães com lista "Potencial Mães" na aba Campanhas.');
-        items.push('Revisar metas por comprador após filtro aplicado.');
+        skus.filter(function (s) { return s._bf; }).slice(0, 3).forEach(function (s) {
+          items.push('[Conversão] Auditar conteúdo/preço: ' + extractSkuName(s.COD_DESCR));
+        });
+        skus.filter(function (s) { return s._yoySkuPct != null && s._yoySkuPct >= 20; }).sort(sortSkuByFatDesc).slice(0, 2).forEach(function (s) {
+          items.push('[Ofensiva] Garantir estoque e visibilidade: ' + extractSkuName(s.COD_DESCR));
+        });
+        var maesCount = skus.filter(function (s) { return s._maes; }).length;
+        if (maesCount > 0) items.push('[Campanha] Ativar mídia — ' + maesCount + ' SKU' + (maesCount > 1 ? 's' : '') + ' alta conversão / baixo tráfego (' + G.camp + ').');
         return items.slice(0, 12);
       }
-
       function renderPlano() {
         var ul = document.getElementById('plano-checklist');
         ul.innerHTML = '';
         buildPlano().forEach(function (text, i) {
-          var id = 'chk-' + i;
-          ul.insertAdjacentHTML('beforeend', '<li class="flex gap-2 items-start border border-[#E9ECEF] rounded p-2 bg-white"><input type="checkbox" id="' + id + '" class="mt-1 rounded border-[#E9ECEF]" /><label for="' + id + '" class="flex-1 cursor-pointer">' + escapeHtml(text) + '</label></li>');
+          ul.insertAdjacentHTML('beforeend', '<li style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd);"><input type="checkbox" id="chk-' + i + '" /><label for="chk-' + i + '">' + escapeHtml(text) + '</label></li>');
         });
       }
 
-      function initTabs() {
-        var bar = document.getElementById('tab-bar');
-        bar.innerHTML = '';
-        TABS.forEach(function (t, i) {
+      function renderCarteira() {
+        var buyers = uniqueBuyers(state.currRows);
+        var html = '';
+        if (!buyers.length) {
+          document.getElementById('carteira-body').innerHTML = '<p style="color:var(--tx2);">Nenhum comprador na coluna Comprador.</p>';
+          return;
+        }
+        var catF = document.getElementById('fb-cat').value || '';
+        var maxF = 0;
+        buyers.forEach(function (b) {
+          var rows = filterByCat(filterByBuyer(state.currRows, b), catF);
+          var f = aggregateTotals(rows).fat;
+          if (f > maxF) maxF = f;
+        });
+        if (maxF <= 0) maxF = 1;
+        buyers.forEach(function (b) {
+          var f2 = aggregateTotals(filterByCat(filterByBuyer(state.currRows, b), catF)).fat;
+          var f1 = aggregateTotals(filterByCat(filterByBuyer(state.prevRows, b), catF)).fat;
+          var pctYoY = f1 > 0 ? ((f2 - f1) / f1) * 100 : null;
+          var wbar = (f2 / maxF) * 100;
+          var barColor = pctYoY != null && pctYoY >= 0 ? 'var(--gr)' : 'var(--rd)';
+          html += '<div class="exec-row"><div class="exec-buyer">' + escapeHtml(b) + '</div><div class="exec-bar-wrap"><div class="exec-bar" style="width:' + wbar + '%;background:' + barColor + ';"></div></div><div style="font-size:12px;font-weight:700;min-width:100px;text-align:right;">' + fmtMoney(f2) + ' <span style="font-size:10px;color:var(--tx3);">' + (pctYoY != null ? fmtPct(pctYoY) : '') + '</span></div></div>';
+        });
+        document.getElementById('carteira-body').innerHTML = html;
+      }
+
+      function rebuildFilters() {
+        var bSel = document.getElementById('fb-buyer');
+        var cSel = document.getElementById('fb-cat');
+        var kb = bSel.value, kc = cSel.value;
+        bSel.innerHTML = '<option value="">Todos os compradores</option>';
+        uniqueBuyers(state.currRows).forEach(function (n) {
+          var o = document.createElement('option');
+          o.value = n;
+          o.textContent = n;
+          bSel.appendChild(o);
+        });
+        if (kb && Array.prototype.some.call(bSel.options, function (o) { return o.value === kb; })) bSel.value = kb;
+        var cats = Object.keys(fatByCategory(state.currRows)).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); });
+        cSel.innerHTML = '<option value="">Todas as categorias</option>';
+        cats.forEach(function (c) {
+          var o = document.createElement('option');
+          o.value = c;
+          o.textContent = c;
+          cSel.appendChild(o);
+        });
+        if (kc && Array.prototype.some.call(cSel.options, function (o) { return o.value === kc; })) cSel.value = kc;
+      }
+
+      var TAB_DEF = [
+        { id: 'funil', label: 'Curva A' },
+        { id: 'geral', label: 'Visão geral' },
+        { id: 'carteira', label: 'Carteira', needsBuyers: true },
+        { id: 'categorias', label: 'Categorias' },
+        { id: 'diagnostico', label: 'Diagnóstico' },
+        { id: 'atributos', label: 'Atributos' },
+        { id: 'campanhas', label: 'Campanhas' },
+        { id: 'script', label: 'Script' },
+        { id: 'plano', label: 'Plano de Ação' }
+      ];
+
+      function buildTabs() {
+        var wrap = document.getElementById('tab-buttons');
+        wrap.innerHTML = '';
+        var hasB = uniqueBuyers(state.currRows).length > 0;
+        TAB_DEF.forEach(function (t) {
+          if (t.needsBuyers && !hasB) return;
           var b = document.createElement('button');
           b.type = 'button';
-          b.className = 'tab-btn' + (i === 0 ? ' tab-btn-active' : '');
+          b.className = 'tab';
+          if (t.id === 'funil') b.classList.add('on');
           b.textContent = t.label;
-          b.setAttribute('data-tab', t.id);
-          b.addEventListener('click', function () { activateTab(t.id); });
-          bar.appendChild(b);
+          b.setAttribute('data-panel', t.id);
+          b.addEventListener('click', function () { goTab(t.id); });
+          wrap.appendChild(b);
+        });
+        activePanel = 'funil';
+        document.querySelectorAll('.pg').forEach(function (p) {
+          p.classList.toggle('on', p.getAttribute('data-panel') === 'funil');
         });
       }
 
-      function activateTab(id) {
-        document.querySelectorAll('.tab-btn').forEach(function (b) {
-          b.classList.toggle('tab-btn-active', b.getAttribute('data-tab') === id);
+      function goTab(id) {
+        activePanel = id;
+        document.querySelectorAll('.tab').forEach(function (t) {
+          t.classList.toggle('on', t.getAttribute('data-panel') === id);
         });
-        document.querySelectorAll('.tab-panel').forEach(function (p) {
-          var match = p.getAttribute('data-tab') === id;
-          p.classList.toggle('tab-panel-active', match);
+        document.querySelectorAll('.pg').forEach(function (p) {
+          p.classList.toggle('on', p.getAttribute('data-panel') === id);
         });
+        if (id === 'categorias' || id === 'geral') {
+          setTimeout(function () {
+            try {
+              ['chart-geral-cat-compare', 'chart-cat-compare', 'chart-share-pie'].forEach(function (gid) {
+                Plotly.Plots.resize(gid);
+              });
+            } catch (e) {}
+          }, 80);
+        }
       }
 
       function renderDashboard() {
-        var empty = document.getElementById('empty-state');
-        var dash = document.getElementById('dashboard');
-        if (!state.currRows.length) {
-          empty.classList.remove('hidden');
-          dash.classList.add('hidden');
-          return;
-        }
-        rebuildBuyerSelect();
+        rebuildFilters();
         var w = getWorkingData();
-        empty.classList.add('hidden');
-        dash.classList.remove('hidden');
-        document.getElementById('print-buyer-line').textContent = document.getElementById('filter-buyer').value ? 'Comprador: ' + document.getElementById('filter-buyer').value : 'Comprador: todos';
+        document.getElementById('visao-h1').textContent = 'Resultados — ' + G.tit;
+        var catHint = 'Categorias: palavras-chave no COD_DESCR (sem números iniciais); senão 1ª palavra. Visão geral e Categorias: apenas Curva A (Pareto 80%).';
+        document.getElementById('visao-sub').textContent = 'KPIs de faturamento = somente ' + G.p2 + '. Curva A = Pareto 80% sobre o faturamento de ' + G.p2 + '. Gráfico e tabela = categorias com pelo menos um SKU na Curva A. Barras: ' + G.p1 + ' e ' + G.p2 + '.';
+        document.getElementById('carteira-sub').textContent = G.p1 + ' vs ' + G.p2;
+        document.getElementById('print-title').textContent = G.tit;
+        document.getElementById('campanhas-sub').textContent = 'Critérios automáticos · ' + G.bf + ' · ' + G.camp;
+        document.getElementById('hdr-bf').textContent = G.bf;
+        document.getElementById('hdr-mae').textContent = G.camp;
 
         if (!w.curr.length) {
-          document.getElementById('kpi-fat').textContent = '—';
-          document.getElementById('kpi-fat-yoy').textContent = 'Sem dados para o filtro.';
-          document.getElementById('kpi-ticket').textContent = '—';
-          document.getElementById('kpi-ruptura-n').textContent = '—';
+          document.getElementById('kpi-row').innerHTML = '<div class="card" style="grid-column:1/-1;">Sem dados para o filtro atual.</div>';
           lastSkus = [];
-          try { Plotly.purge('chart-vol-cat'); Plotly.purge('chart-yoy-cat'); } catch (e) {}
-          renderFunil(); renderDiagnostico(); renderAtributos(w); renderCampanhas(); renderScript(); renderPlano();
+          document.getElementById('fb-info').textContent = '';
+          document.getElementById('cat-panel-sub').textContent = catHint + ' · sem linhas no recorte atual.';
+          var gel = document.getElementById('geral-chart-legend');
+          var cleg = document.getElementById('cat-chart-legend');
+          if (gel) gel.textContent = G.p1 + ' vs ' + G.p2;
+          if (cleg) cleg.textContent = G.p1 + ' vs ' + G.p2;
+          try {
+            Plotly.purge('chart-geral-cat-compare'); Plotly.purge('chart-cat-compare');
+            Plotly.purge('chart-share-pie');
+          } catch (e) {}
+          var tbG = document.getElementById('tbody-geral-cat');
+          if (tbG) tbG.innerHTML = '';
+          var tbC = document.getElementById('tbody-cat-detail');
+          if (tbC) tbC.innerHTML = '';
+          var gi = document.getElementById('geral-insights');
+          if (gi) gi.innerHTML = '';
+          rebuildFunilCategorySelect();
+          renderFunil(); renderDiagnostico(); renderAtributos(w); renderCampanhas(); renderScript(); renderPlano(); renderCarteira();
           return;
         }
 
-        var tPrev = w.prev.length ? aggregateTotals(w.prev) : null;
-        var tCurr = aggregateTotals(w.curr);
+        var pareto = computeBrutoParetoCurvaA(state.currRows);
+        var curvaGlobal = pareto.curvaMap;
+        var skusGlobalA = pareto.skusGlobal.filter(function (s) { return s.CURVA === 'A'; });
+        attachSkuYoY(skusGlobalA, state.prevRows);
+
+        var globalASet = {};
+        pareto.skusGlobal.forEach(function (s) {
+          if (s.CURVA === 'A') globalASet[s.COD_DESCR] = true;
+        });
+
         var skus = groupBySku(w.curr);
-        skus.sort(function (a, b) { return b.FATURAMENTO - a.FATURAMENTO; });
-        assignABC(skus);
+        skus.forEach(function (s) {
+          s.CURVA = curvaGlobal[s.COD_DESCR] != null ? curvaGlobal[s.COD_DESCR] : 'C';
+        });
         attachSkuYoY(skus, w.prev);
         enrichSkus(skus);
-        lastSkus = skus;
+        lastSkus = skus.filter(function (s) { return s.CURVA === 'A'; });
+        lastSkus.sort(sortSkuByFatDesc);
+
+        var rowsCurrA = filterRowsByCurvaSkuSet(w.curr, globalASet);
+        var rowsPrevA = filterRowsByCurvaSkuSet(w.prev, globalASet);
+        var byCatCurvaA = fatByCategory(rowsCurrA);
+        var prevCatCurvaA = fatByCategory(rowsPrevA);
+        var hasPrev = state.prevRows.length > 0;
 
         var byCat = fatByCategory(w.curr);
         var prevCat = fatByCategory(w.prev);
-        var hasPrev = w.prev.length > 0;
-        lastContext = { byCatCurr: byCat, prevCat: prevCat, hasPrev: hasPrev };
+        lastContext = {
+          byCatCurr: byCat,
+          prevCat: prevCat,
+          hasPrev: hasPrev,
+          totalFaturamentoBruto: pareto.totalFaturamentoBruto,
+          fatCurvaA: pareto.fatCurvaA,
+          byCatCurvaA: byCatCurvaA,
+          prevCatCurvaA: prevCatCurvaA,
+          skusGlobalA: skusGlobalA
+        };
 
-        document.getElementById('kpi-fat').textContent = fmtMoney(tCurr.fat);
-        var yEl = document.getElementById('kpi-fat-yoy');
-        if (tPrev && tPrev.fat > 0) {
-          var yy = ((tCurr.fat - tPrev.fat) / tPrev.fat) * 100;
-          yEl.innerHTML = '<span class="' + (yy >= 0 ? 'badge-yoy-up' : 'badge-yoy-down') + '">YoY ' + fmtPct(yy) + '</span> <span class="text-[#6c757d] text-xs">vs. anterior</span>';
-        } else {
-          yEl.textContent = 'Carregue período anterior para YoY';
-          yEl.className = 'text-sm mt-2 text-[#6c757d]';
+        var gel = document.getElementById('geral-chart-legend');
+        var cleg = document.getElementById('cat-chart-legend');
+        if (gel) gel.textContent = G.p1 + ' vs ' + G.p2;
+        if (cleg) cleg.textContent = G.p1 + ' vs ' + G.p2;
+
+        // Churn: SKUs que estavam na Curva A anterior mas saíram da atual
+        var churnedSkus = [];
+        if (hasPrev) {
+          var paretoPrev = computeBrutoParetoCurvaA(state.prevRows);
+          var currCodSet = {};
+          skusGlobalA.forEach(function (s) { currCodSet[s.COD_DESCR] = true; });
+          churnedSkus = paretoPrev.skusGlobal.filter(function (s) { return s.CURVA === 'A' && !currCodSet[s.COD_DESCR]; });
         }
-        document.getElementById('kpi-ticket').textContent = tCurr.ped > 0 ? fmtMoney(tCurr.fat / tCurr.ped) : '—';
-        var rupList = skus.filter(function (s) { return s._ruptura; });
-        document.getElementById('kpi-ruptura-n').textContent = String(rupList.length);
-        document.getElementById('kpi-ruptura-sub').textContent = rupList.length ? 'Itens críticos na Curva A — ver aba Diagnóstico' : 'Nenhuma ruptura detectada na Curva A';
+        var churnedFat = churnedSkus.reduce(function (a, s) { return a + s.FATURAMENTO; }, 0);
+        var totalPedidos = aggregateTotals(state.currRows).ped;
+        var totalPedidosPrev = hasPrev ? aggregateTotals(state.prevRows).ped : 0;
 
-        renderChartVol(qtdByCategory(w.curr));
-        renderChartYoy(byCat, prevCat, hasPrev);
+        renderKpis(pareto.totalFaturamentoBruto, pareto.fatCurvaA, hasPrev, skusGlobalA, totalPedidos, totalPedidosPrev, churnedSkus.length, churnedFat);
+        var geralFats = buildGeralCategoryFats(prevCatCurvaA, byCatCurvaA, skusGlobalA);
+        renderChartCatYearCompare('chart-geral-cat-compare', geralFats.prev, geralFats.curr, G.p1, G.p2, geralFats.order);
+        renderChartCatYearCompare('chart-cat-compare', prevCatCurvaA, byCatCurvaA, G.p1, G.p2);
+        renderChartSharePie('chart-share-pie', byCatCurvaA);
+        fillCategoryCompareTable('tbody-geral-cat', 'th-geral-p1', 'th-geral-p2', geralFats.prev, geralFats.curr, G.p1, G.p2, false, geralFats.order);
+        var qtdByCatCurvaA = qtdByCategory(rowsCurrA);
+        renderCatDetailTable(prevCatCurvaA, byCatCurvaA, G.p1, G.p2, qtdByCatCurvaA, skusGlobalA, hasPrev);
+        renderGeralInsights(geralFats.prev, geralFats.curr, hasPrev, churnedSkus, skusGlobalA);
+        var nCatUi = Object.keys(byCat).length;
+        document.getElementById('cat-panel-sub').textContent = catHint + ' · ' + nCatUi + ' categorias no recorte (todas); painéis = Curva A apenas.';
+        rebuildFunilCategorySelect();
         renderFunil();
         renderDiagnostico();
         renderAtributos(w);
         renderCampanhas();
         renderScript();
         renderPlano();
+        renderCarteira();
 
-        document.getElementById('file-status').textContent =
-          'Filtrado: ' + w.curr.length + ' linhas · Curva A: ' + skus.filter(function (s) { return s.CURVA === 'A'; }).length + ' SKUs · Base: ' + state.currRows.length + ' linhas';
+        document.getElementById('rpt-brand').textContent = G.tit;
+        document.getElementById('fb-info').textContent = w.curr.length
+          ? ('Linhas: ' + w.curr.length + ' · SKUs Curva A: ' + lastSkus.length + ' · ' + catHint)
+          : '';
       }
 
-      initTabs();
-      document.getElementById('filter-buyer').innerHTML = '<option value="">Todos os compradores</option>';
-      document.getElementById('filter-buyer').addEventListener('change', renderDashboard);
+      function checkReady() {
+        document.getElementById('btn-run').disabled = !state.currRows.length;
+      }
+
+      function dzWire() {
+        var dz1 = document.getElementById('dz1');
+        var dz2 = document.getElementById('dz2');
+        dz1.addEventListener('dragover', function (e) { e.preventDefault(); dz1.classList.add('drag'); });
+        dz1.addEventListener('dragleave', function () { dz1.classList.remove('drag'); });
+        dz1.addEventListener('drop', function (e) {
+          e.preventDefault();
+          dz1.classList.remove('drag');
+          var f = e.dataTransfer.files[0];
+          if (f) loadFile(f, 'prev');
+        });
+        dz2.addEventListener('dragover', function (e) { e.preventDefault(); dz2.classList.add('drag'); });
+        dz2.addEventListener('dragleave', function () { dz2.classList.remove('drag'); });
+        dz2.addEventListener('drop', function (e) {
+          e.preventDefault();
+          dz2.classList.remove('drag');
+          var f = e.dataTransfer.files[0];
+          if (f) loadFile(f, 'curr');
+        });
+      }
+
+      function loadFile(file, kind) {
+        readFileAsArrayBuffer(file).then(function (ab) {
+          try {
+            var res = parseWorkbook(ab, file.name);
+            if (kind === 'prev') {
+              state.prevRows = res.rows;
+              state.metaPrev = res.meta;
+              document.getElementById('dz1').classList.add('ok');
+              document.getElementById('fn1').textContent = file.name;
+            } else {
+              state.currRows = res.rows;
+              state.metaCurr = res.meta;
+              document.getElementById('dz2').classList.add('ok');
+              document.getElementById('fn2').textContent = file.name;
+            }
+            checkReady();
+          } catch (err) {
+            alert(err.message || String(err));
+          }
+        }).catch(function () { alert('Erro ao ler arquivo.'); });
+      }
+
+      function readCfg() {
+        G.p1 = document.getElementById('c-p1').value.trim() || '2025';
+        G.p2 = document.getElementById('c-p2').value.trim() || '2026';
+        G.tit = document.getElementById('c-tit').value.trim() || 'Sell-out';
+        G.bf = document.getElementById('c-bf').value.trim() || 'Bota Fora';
+        G.camp = document.getElementById('c-camp').value.trim() || 'Campanha Mães';
+      }
+
+      function rodar() {
+        if (!state.currRows.length) return;
+        readCfg();
+        document.getElementById('sc-up').style.display = 'none';
+        document.getElementById('sc-load').style.display = 'flex';
+        var msgs = ['Lendo planilhas…', 'Calculando Curva ABC…', 'Montando painéis…'];
+        var mi = 0;
+        var iv = setInterval(function () {
+          if (mi < msgs.length) document.getElementById('load-msg').textContent = msgs[mi++];
+        }, 280);
+        setTimeout(function () {
+          clearInterval(iv);
+          document.getElementById('sc-load').style.display = 'none';
+          document.getElementById('sc-rpt').style.display = 'block';
+          buildTabs();
+          goTab('funil');
+          renderDashboard();
+          try {
+            var notes = localStorage.getItem('sellout_acao_notas');
+            if (notes && document.getElementById('ac-notas')) document.getElementById('ac-notas').value = notes;
+          } catch (e) {}
+        }, 550);
+      }
+
+      function resetAll() {
+        state.currRows = [];
+        state.prevRows = [];
+        state.metaCurr = null;
+        state.metaPrev = null;
+        lastSkus = [];
+        funilSearchText = '';
+        funilCodeSearch = '';
+        funilSortDir = 'desc';
+        var inp = document.getElementById('funil-search');
+        if (inp) inp.value = '';
+        var codeInp = document.getElementById('funil-code-search');
+        if (codeInp) codeInp.value = '';
+        var clrBtn = document.getElementById('funil-search-clear');
+        if (clrBtn) clrBtn.style.display = 'none';
+        var icon = document.getElementById('funil-sort-icon');
+        if (icon) icon.textContent = '↓';
+        document.getElementById('file-prev').value = '';
+        document.getElementById('file-curr').value = '';
+        document.getElementById('dz1').classList.remove('ok');
+        document.getElementById('dz2').classList.remove('ok');
+        document.getElementById('fn1').textContent = '';
+        document.getElementById('fn2').textContent = '';
+        document.getElementById('sc-rpt').style.display = 'none';
+        document.getElementById('sc-up').style.display = 'flex';
+        checkReady();
+        try {
+          Plotly.purge('chart-geral-cat-compare'); Plotly.purge('chart-cat-compare');
+          Plotly.purge('chart-share-pie');
+        } catch (e) {}
+      }
 
       document.getElementById('file-prev').addEventListener('change', function (e) {
         var f = e.target.files[0];
-        if (!f) return;
-        readFileAsArrayBuffer(f).then(function (ab) { state.prevRows = parseWorkbook(ab, f.name); renderDashboard(); }).catch(function (err) { alert(err); });
+        if (f) loadFile(f, 'prev');
       });
       document.getElementById('file-curr').addEventListener('change', function (e) {
         var f = e.target.files[0];
-        if (!f) return;
-        readFileAsArrayBuffer(f).then(function (ab) { state.currRows = parseWorkbook(ab, f.name); renderDashboard(); }).catch(function (err) { alert(err); });
+        if (f) loadFile(f, 'curr');
       });
-      document.getElementById('btn-clear').addEventListener('click', function () {
-        state.currRows = []; state.prevRows = []; lastSkus = [];
-        document.getElementById('file-prev').value = '';
-        document.getElementById('file-curr').value = '';
-        try { Plotly.purge('chart-vol-cat'); Plotly.purge('chart-yoy-cat'); } catch (e) {}
+      document.getElementById('btn-run').addEventListener('click', rodar);
+      document.getElementById('btn-reset').addEventListener('click', resetAll);
+      document.getElementById('fb-buyer').addEventListener('change', renderDashboard);
+      document.getElementById('fb-cat').addEventListener('change', renderDashboard);
+      document.getElementById('fb-clear').addEventListener('click', function () {
+        document.getElementById('fb-buyer').value = '';
+        document.getElementById('fb-cat').value = '';
         renderDashboard();
       });
+      document.getElementById('funil-cat').addEventListener('change', function () {
+        renderFunil();
+      });
+      document.getElementById('funil-code-search').addEventListener('input', function () {
+        funilCodeSearch = this.value.trim();
+        renderFunil();
+      });
+      document.getElementById('funil-search').addEventListener('input', function () {
+        funilSearchText = this.value;
+        var btn = document.getElementById('funil-search-clear');
+        if (btn) btn.style.display = this.value ? 'inline-block' : 'none';
+        renderFunil();
+      });
+      document.getElementById('funil-search-clear').addEventListener('click', function () {
+        funilSearchText = '';
+        var inp = document.getElementById('funil-search');
+        if (inp) inp.value = '';
+        this.style.display = 'none';
+        renderFunil();
+      });
+      document.getElementById('th-funil-fat').addEventListener('click', function () {
+        funilSortDir = funilSortDir === 'desc' ? 'asc' : 'desc';
+        var icon = document.getElementById('funil-sort-icon');
+        if (icon) icon.textContent = funilSortDir === 'desc' ? '↓' : '↑';
+        renderFunil();
+      });
       document.getElementById('btn-print').addEventListener('click', function () {
-        document.getElementById('print-date').textContent = 'Gerado em ' + new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+        document.getElementById('print-date').textContent = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date());
+        document.getElementById('print-buyer-line').textContent = document.getElementById('fb-buyer').value ? 'Comprador: ' + document.getElementById('fb-buyer').value : 'Todos os compradores';
         window.print();
       });
+      document.getElementById('btn-meet').addEventListener('click', function () {
+        document.body.classList.toggle('meeting');
+      });
+      document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'm') { e.preventDefault(); document.body.classList.toggle('meeting'); }
+      });
+      document.getElementById('ac-notas').addEventListener('input', function () {
+        try { localStorage.setItem('sellout_acao_notas', document.getElementById('ac-notas').value); } catch (e) {}
+      });
+
+      dzWire();
+      checkReady();
 
       window.addEventListener('beforeprint', function () {
         if (!state.currRows.length || typeof Plotly === 'undefined') return;
         try {
-          Plotly.relayout('chart-vol-cat', { height: 190, margin: { l: 44, r: 8, t: 8, b: 28 }, font: { size: 9 } });
-          Plotly.relayout('chart-yoy-cat', { height: 190, margin: { l: 40, r: 8, t: 8, b: 52 }, font: { size: 9 }, 'xaxis.tickfont.size': 7 });
+          ['chart-geral-cat-compare', 'chart-cat-compare', 'chart-share-pie'].forEach(function (id) {
+            Plotly.relayout(id, { height: 200, font: { size: 9 } });
+          });
         } catch (e) {}
       });
       window.addEventListener('afterprint', function () {
-        if (state.currRows.length) renderDashboard();
+        if (state.currRows.length && document.getElementById('sc-rpt').style.display === 'block') renderDashboard();
       });
 
       window.normalizeColumnName = normalizeColumnName;
